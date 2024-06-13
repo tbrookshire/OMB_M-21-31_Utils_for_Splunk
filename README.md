@@ -15,7 +15,10 @@ What this app DOES do:
 5. Provide really awesome features after a deep dive is performed (e.g., the dashboard `Auto. Data Inventory`).
 
 # Installation Instructions:
-Either play around with the dashboards using the `omb-m2131-status-demo` lookup or create your own status lookup for tracking by using the `Getting Started` dashboard.
+Either play around with the dashboards using the `omb-m2131-status-demo` lookup or create your own status lookup for tracking by using the `Getting Started` dashboard. 
+
+### Custom capability & role
+Creating a new status lookup with the `Getting Started` dashboard or `m2131getstatus` custom search command, will require the user to have the `omb_m2131_create_status_lookup` custom capability. This capability is assigned to the `omb_m2131_maintainer` and `admin` roles by default. The dashboard was intentionally configured to be visible to users even though they may not have the capability or role. Feel free to change that visibility as needed for your own environment.
 
 ## Dependencies:
 These aren't necessarily needed for tracking compliance with this app. One or two dashboards or panels may not work without the "Network Diagram Viz", but neither of these apps are _technically_ needed for the basic functionality of this app to be available. They either make a task a little easier or grant the ability to use advanced functionality within this app (e.g., the `Gap Analysis` dashboard)
