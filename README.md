@@ -29,7 +29,7 @@ These aren't necessarily needed for tracking compliance with this app. One or tw
 
 # Upgrade Instructions:
 ## From app version 1.5.1 to 1.7.x
-If upgrading the app from version 1.5.1 OR if your the status lookup is using the m2131 lookup version 1.2.3, then make sure you use the appropriate `omb-m2131-upgrade_status_lookup-from_123-to_140` macro. If upgrading a status lookup that includes a group name in the lookup definition name, then use the `omb-m2131-upgrade_status_lookup-from_123-to_140(1)` macro and specify the name of the lookup as the argument. See the `Macros` section in the dashboard `Knowledge Object Reference` for more information.
+The version of the m2131 pdf lookup is different than the version of the app, as it should be. If upgrading the app from version 1.5.1 OR if your the status lookup is using the m2131 lookup version 1.2.3, then make sure you use the appropriate `omb-m2131-upgrade_status_lookup-from_123-to_140` macro. If upgrading a status lookup that includes a group name in the lookup definition name, then use the `omb-m2131-upgrade_status_lookup-from_123-to_140(1)` macro and specify the name of the lookup as the argument. See the `Macros` section in the dashboard `Knowledge Object Reference` for more information.
 
 # Additional Notes:
 The only updates I intend on making to this app are for fixing bugs. I've spent a year of personal time on this app and released it _way_ later than I anticipated all because of my own personal standards. I'm burnt out. I don't plan on adding any new features to this app. If you find a bug or logic issue, then please let me know or submit a pull request.
