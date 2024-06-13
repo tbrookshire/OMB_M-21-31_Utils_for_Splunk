@@ -1,5 +1,7 @@
 # OMB_M-21-31_Utils_for_Splunk
-Splunk dashboards and utilities for tracking compliance at a high-level with OMB M-21-31. This is the final product of what was presented during the Splunk .conf23 session "_SEC1817B - How Centers for Disease Control (CDC) Leverages the Power of OMB M-21-31 for More Than Just Compliance_" by Andrew Dayton & Thomas Brookshire ([recording](https://conf.splunk.com/files/2023/recordings/SEC1817B.mp4), [slides](https://conf.splunk.com/files/2023/slides/SEC1817B.pdf)). 
+Splunk dashboards and utilities for tracking compliance at a high-level with OMB M-21-31. 
+
+This is the final product of what was presented during the Splunk .conf23 session "_SEC1817B - How Centers for Disease Control (CDC) Leverages the Power of OMB M-21-31 for More Than Just Compliance_" by Andrew Dayton & Thomas Brookshire ([recording](https://conf.splunk.com/files/2023/recordings/SEC1817B.mp4), [slides](https://conf.splunk.com/files/2023/slides/SEC1817B.pdf)). 
 
 # Purpose:
 What this app does NOT do:
