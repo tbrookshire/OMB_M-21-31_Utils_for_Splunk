@@ -71,7 +71,7 @@ Grants insight into the environment's data sources by automatically generating a
 ## Gap Analysis
 Helps visualize the current state of compliance and areas that need improvement.
 
-![image](https://github.com/tbrookshire/OMB_M-21-31_Utils_for_Splunk/assets/86690101/2fa94296-07e8-408b-bd00-485a05da241e)
+![image](https://github.com/tbrookshire/OMB_M-21-31_Utils_for_Splunk/assets/86690101/cc2faff3-18d8-46d1-8164-415388541dc2)
 
 
 ## Search Memo
