@@ -1,0 +1,831 @@
+<form version="1.1" theme="dark" hideEdit="true" hideExport="true">
+  <label>OMB M-21-31 - Search Memo</label>
+  <description>Filter the OMB M-21-31 PDF extracted contents</description>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="multiselect" token="page" searchWhenChanged="true" id="input_page">
+      <!--======================-->
+      <!--Page-->
+      <!--======================-->
+      <label>Page</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>page</fieldForLabel>
+      <fieldForValue>page</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by page</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="cgp" searchWhenChanged="true" id="input_cgp">
+      <!--======================-->
+      <!--cisa-->
+      <!--======================-->
+      <label>CISA Guidance Priority</label>
+      <choice value="any-*">Assigned</choice>
+      <choice value="NULL">Missing</choice>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>cisa_guidance_priority</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by cisa_guidance_priority
+        | where cisa_guidance_priority!="NULL"
+        | eval label = replace(cisa_guidance_priority, "^any-", "")</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <delimiter>, </delimiter>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <default>any-*,NULL</default>
+    </input>
+    <input type="multiselect" token="ell" searchWhenChanged="true" id="input_ell">
+      <!--======================-->
+      <!--Event Logging Level-->
+      <!--======================-->
+      <label>Event Logging Level</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>event_logging_level</fieldForLabel>
+      <fieldForValue>event_logging_level</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by event_logging_level</query>
+      </search>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="log_category-label" searchWhenChanged="true" id="input_lcl">
+      <!--======================-->
+      <!--Log Category - Label-->
+      <!--======================-->
+      <label>Log Category - Label</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>log_category-label</fieldForLabel>
+      <fieldForValue>log_category-label</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by log_category-label</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="log_category" searchWhenChanged="true" id="input_lc">
+      <!--======================-->
+      <!--Log Category-->
+      <!--======================-->
+      <label>Log Category</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>log_category</fieldForLabel>
+      <fieldForValue>log_category</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by log_category</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="required_data_category" searchWhenChanged="true" id="input_rdc">
+      <!--======================-->
+      <!--Required Data Category-->
+      <!--======================-->
+      <label>Required Data Category</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>required_data_category</fieldForLabel>
+      <fieldForValue>required_data_category</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by required_data_category</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="required_data-check" searchWhenChanged="true" id="input_rd">
+      <!--======================-->
+      <!--Required Data-->
+      <!--======================-->
+      <label>Required Data</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>required_data-check</fieldForLabel>
+      <fieldForValue>required_data-check</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by required_data-check</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="required_sub_data-check" searchWhenChanged="true" id="input_rsd">
+      <!--======================-->
+      <!--Required Sub Data-->
+      <!--======================-->
+      <label>Required Sub Data</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>required_sub_data-check</fieldForLabel>
+      <fieldForValue>required_sub_data-check</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by required_sub_data-check</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="check" searchWhenChanged="true" id="input_check">
+      <!--======================-->
+      <!--Check-->
+      <!--======================-->
+      <label>Check</label>
+      <choice value="*">All</choice>
+      <delimiter>,  </delimiter>
+      <fieldForLabel>check</fieldForLabel>
+      <fieldForValue>check</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by check</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="dropdown" token="check_type" searchWhenChanged="true" id="check_type">
+      <!--======================-->
+      <!--Check Type-->
+      <!--======================-->
+      <label>Check Type</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>check_type</fieldForLabel>
+      <fieldForValue>check_type</fieldForValue>
+      <search base="pdf">
+        <query>| stats c by check_type</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="check_id" searchWhenChanged="true" id="input_check_id">
+      <!--======================-->
+      <!--Check ID-->
+      <!--======================-->
+      <label>Check ID</label>
+      <choice value="*">All</choice>
+      <delimiter>, </delimiter>
+      <fieldForLabel>check_id</fieldForLabel>
+      <fieldForValue>check_id</fieldForValue>
+      <search base="pdf">
+        <query>```
+| fields check_id, check_key
+| mvexpand check_key
+| dedup check_key
+```
+| fields check_id</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="text" token="guid_input" searchWhenChanged="true" id="guid_input">
+      <!--======================-->
+      <!--GUID-->
+      <!--======================-->
+      <label>GUID</label>
+      <change>
+        <condition value="">
+          <set token="guid_key">*</set>
+        </condition>
+        <condition>
+          <set token="guid_key">$guid_input$</set>
+        </condition>
+      </change>
+      <default></default>
+    </input>
+    <input type="text" token="general_search-input" searchWhenChanged="true" id="general_search">
+      <!--======================-->
+      <!--General Search-->
+      <!--======================-->
+      <label>Splunk Query/Keyword Filter</label>
+      <default></default>
+      <change>
+        <condition value="">
+          <set token="general_search"></set>
+        </condition>
+        <condition>
+          <set token="general_search">| search $general_search-input$</set>
+        </condition>
+      </change>
+    </input>
+    <input type="link" token="gil_all_clear_search" id="gil_all_clear_search" searchWhenChanged="true">
+      <label></label>
+      <choice value="1">Clear Search</choice>
+      <change>
+        <condition value="1">
+          <set token="form.general_search-input"></set>
+          <set token="form.gil_all_clear_search"></set>
+        </condition>
+      </change>
+    </input>
+    <input type="link" token="il_reset_filters">
+      <label></label>
+      <choice value="1">Reset All Filters</choice>
+      <change>
+        <set token="form.page">*</set>
+        <set token="page">*</set>
+        <set token="form.ell">*</set>
+        <set token="ell">*</set>
+        <set token="form.log_category-label">*</set>
+        <set token="log_category-label">*</set>
+        <set token="form.log_category">*</set>
+        <set token="log_category">*</set>
+        <set token="form.required_data_category">*</set>
+        <set token="required_data_category">*</set>
+        <set token="form.required_data-check">*</set>
+        <set token="required_data-check">*</set>
+        <set token="form.required_sub_data-check">*</set>
+        <set token="required_sub_data-check">*</set>
+        <set token="form.check">*</set>
+        <set token="check">*</set>
+        <set token="form.check_type">*</set>
+        <set token="check_type">*</set>
+        <set token="form.check_id">*</set>
+        <set token="check_id">*</set>
+        <!--<set token="form.guid_input"></set>-->
+        <!--<set token="guid_input"></set>-->
+        <unset token="form.guid_input"></unset>
+        <unset token="guid_input"></unset>
+        <set token="form.general_search-input"></set>
+        <set token="general_search-input"></set>
+        <set token="form.check-has_example">*</set>
+        <set token="check-has_example">*</set>
+        <set token="form.check-example-input">*</set>
+        <set token="check-example-input">*</set>
+        <set token="form.check-has_filter">*</set>
+        <set token="check-has_filter">*</set>
+        <set token="form.check-filter-input">*</set>
+        <set token="check-filter-input">*</set>
+        <set token="form.check-has_file_path">*</set>
+        <set token="check-has_file_path">*</set>
+        <set token="form.check_type-controversial">*</set>
+        <set token="check_type-controversial">*</set>
+        <set token="form.check_type-is_action">*</set>
+        <set token="check_type-is_action">*</set>
+        <unset token="form.il_reset_filters"></unset>
+        <unset token="il_reset_filters"></unset>
+      </change>
+    </input>
+    <html id="h_break">
+      <body id="b_break"/>
+    </html>
+    <input type="checkbox" token="toggle-more_filters" searchWhenChanged="true">
+      <label></label>
+      <choice value="1">More Filters</choice>
+      <delimiter> </delimiter>
+    </input>
+    <input type="checkbox" token="toggle-settings" searchWhenChanged="true">
+      <label></label>
+      <choice value="1">Adjust Displayed Fields</choice>
+      <delimiter> </delimiter>
+    </input>
+    <input type="checkbox" token="toggle-chart1" searchWhenChanged="true" id="show_chart1">
+      <label></label>
+      <choice value="1">Show Chart #1</choice>
+      <delimiter> </delimiter>
+      <change>
+        <condition value="1">
+          <set token="toggle-charts">1</set>
+        </condition>
+        <condition>
+          <eval token="toggle-charts">if($toggle-chart2$ == 1, 1, NULL)</eval>
+        </condition>
+      </change>
+    </input>
+    <input type="checkbox" token="toggle-chart2" searchWhenChanged="true" id="show_chart2">
+      <label></label>
+      <choice value="1">Show Chart #2</choice>
+      <delimiter> </delimiter>
+      <change>
+        <condition value="1">
+          <set token="toggle-charts">1</set>
+        </condition>
+        <condition>
+          <eval token="toggle-charts">if($toggle-chart1$ == 1, 1, NULL)</eval>
+        </condition>
+      </change>
+    </input>
+    <input type="checkbox" token="ic_toggle-word_wrap" searchWhenChanged="true" id="ic_toggle_word_wrap">
+      <label></label>
+      <choice value="1">Toggle Line Wrapping</choice>
+      <delimiter> </delimiter>
+      <change>
+        <condition value="1">
+          <set token="toggle-word_wrap">true</set>
+        </condition>
+        <condition>
+          <set token="toggle-word_wrap">false</set>
+        </condition>
+      </change>
+    </input>
+  </fieldset>
+  <row depends="$toggle-more_filters$">
+    <panel>
+      <title>Additional Filters</title>
+      <input type="dropdown" token="check-has_example" searchWhenChanged="true">
+        <!--======================-->
+        <!--Check - Has Example-->
+        <!--======================-->
+        <label>Check Type - Has Example</label>
+        <choice value="*">All</choice>
+        <choice value="No">No</choice>
+        <choice value="Yes">Yes</choice>
+        <default>*</default>
+        <change>
+          <condition value="No">
+            <unset token="show_input-check_example"></unset>
+          </condition>
+          <condition>
+            <set token="show_input-check_example">1</set>
+          </condition>
+        </change>
+      </input>
+      <input type="multiselect" token="check-example-input" searchWhenChanged="true" depends="$show_input-check_example$">
+        <!--======================-->
+        <!--Check - Example-->
+        <!--======================-->
+        <label>Check - Example</label>
+        <choice value="*">All</choice>
+        <delimiter> , </delimiter>
+        <fieldForLabel>check-example</fieldForLabel>
+        <fieldForValue>check-example</fieldForValue>
+        <search base="pdf">
+          <query>| fields check-example
+| eval check-example = split('check-example', ";")
+| mvexpand check-example
+| dedup check-example
+| sort check-example</query>
+        </search>
+        <allowCustomValues>true</allowCustomValues>
+        <default>*</default>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+      </input>
+      <input type="dropdown" token="check-has_filter" searchWhenChanged="true">
+        <!--======================-->
+        <!--Check - Has Filter-->
+        <!--======================-->
+        <label>Check Type - Has Filter</label>
+        <choice value="*">All</choice>
+        <choice value="No">No</choice>
+        <choice value="Yes">Yes</choice>
+        <default>*</default>
+        <change>
+          <condition value="No">
+            <unset token="show_input-check_filter"></unset>
+          </condition>
+          <condition>
+            <set token="show_input-check_filter">1</set>
+          </condition>
+        </change>
+      </input>
+      <input type="multiselect" token="check-filter-input" searchWhenChanged="true" depends="$show_input-check_filter$">
+        <!--======================-->
+        <!--Check - Filter-->
+        <!--======================-->
+        <label>Check - Filter</label>
+        <choice value="*">All</choice>
+        <delimiter>,  </delimiter>
+        <fieldForLabel>check-filter</fieldForLabel>
+        <fieldForValue>check-filter</fieldForValue>
+        <search base="pdf">
+          <query>| fields check-filter
+| eval check-filter = split('check-filter', ";")
+| mvexpand check-filter
+| dedup check-filter
+| sort check-filter</query>
+        </search>
+        <allowCustomValues>true</allowCustomValues>
+        <default>*</default>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+      </input>
+      <input type="dropdown" token="check-has_file_path" searchWhenChanged="true">
+        <!--======================-->
+        <!--Check - Has File Path-->
+        <!--======================-->
+        <label>Check Type - Has File Path</label>
+        <choice value="*">All</choice>
+        <choice value="No">No</choice>
+        <choice value="Yes">Yes</choice>
+        <default>*</default>
+        <change>
+          <condition value="No">
+            <unset token="show_input-check_file_path"></unset>
+          </condition>
+          <condition>
+            <set token="show_input-check_file_path">1</set>
+          </condition>
+        </change>
+      </input>
+      <input type="dropdown" token="check_type-controversial" searchWhenChanged="true">
+        <!--======================-->
+        <!--Check Type - Controversial-->
+        <!--======================-->
+        <label>Check Type - Controversial</label>
+        <choice value="*">All</choice>
+        <choice value="No">No</choice>
+        <choice value="Yes">Yes</choice>
+        <default>*</default>
+      </input>
+      <input type="dropdown" token="check_type-is_action" searchWhenChanged="true">
+        <!--======================-->
+        <!--Check Type - Is Action-->
+        <!--======================-->
+        <label>Check Type - Is Action</label>
+        <choice value="*">All</choice>
+        <choice value="No">No</choice>
+        <choice value="Yes">Yes</choice>
+        <default>*</default>
+      </input>
+    </panel>
+  </row>
+  <row depends="$toggle-settings$">
+    <panel id="panel_settings">
+      <title>Settings</title>
+      <!--<input type="checkbox" token="toggle-chart1" searchWhenChanged="true" id="show_chart1">-->
+      <!--  <label></label>-->
+      <!--  <choice value="1">Show Chart #1</choice>-->
+      <!--  <delimiter> </delimiter>-->
+      <!--  <change>-->
+      <!--    <condition value="1">-->
+      <!--      <set token="toggle-charts">1</set>-->
+      <!--    </condition>-->
+      <!--    <condition>-->
+      <!--      <eval token="toggle-charts">if($toggle-chart2$ == 1, 1, NULL)</eval>-->
+      <!--    </condition>-->
+      <!--  </change>-->
+      <!--</input>-->
+      <!--<input type="checkbox" token="toggle-chart2" searchWhenChanged="true"  id="show_chart2">-->
+      <!--  <label></label>-->
+      <!--  <choice value="1">Show Chart #2</choice>-->
+      <!--  <delimiter> </delimiter>-->
+      <!--  <change>-->
+      <!--    <condition value="1">-->
+      <!--      <set token="toggle-charts">1</set>-->
+      <!--    </condition>-->
+      <!--    <condition>-->
+      <!--      <eval token="toggle-charts">if($toggle-chart1$ == 1, 1, NULL)</eval>-->
+      <!--    </condition>-->
+      <!--  </change>-->
+      <!--</input>-->
+      <!--<input type="checkbox" token="ic_toggle-word_wrap" searchWhenChanged="true" id="ic_toggle_word_wrap">-->
+      <!--  <label></label>-->
+      <!--  <choice value="1">Toggle Line Wrapping</choice>-->
+      <!--  <delimiter> </delimiter>-->
+      <!--  <change>-->
+      <!--    <condition value="1">-->
+      <!--      <set token="toggle-word_wrap">true</set>-->
+      <!--    </condition>-->
+      <!--    <condition>-->
+      <!--      <set token="toggle-word_wrap">false</set>-->
+      <!--    </condition>-->
+      <!--  </change>-->
+      <!--</input>-->
+      <input type="multiselect" token="fields-excluded" searchWhenChanged="true" id="fields_excluded">
+        <label>Fields to Exclude</label>
+        <delimiter>,  </delimiter>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <allowCustomValues>true</allowCustomValues>
+        <search base="pdf">
+          <query>| fieldsummary maxvals=1
+          | fields field
+          </query>
+        </search>
+        <initialValue>*-guid,guid_key,*-prev</initialValue>
+      </input>
+      <input type="link" token="pil_reset_fields_excluded" searchWhenChanged="true" id="pil_reset_fields_excluded">
+        <label></label>
+        <choice value="1">Reset Excluded Fields</choice>
+        <change>
+          <condition value="1">
+            <set token="form.fields-included"></set>
+            <set token="form.pil_reset_fields_excluded"></set>
+          </condition>
+        </change>
+      </input>
+      <input type="multiselect" token="fields-included" searchWhenChanged="true" id="fields_included">
+        <label>Fields to Include</label>
+        <default>order,page,check_id,hierarchy,cisa_guidance_priority,event_logging_level,log_category-label,log_category,log_category-short,required_data_category,required_data,required_sub_data,required_data-check,required_sub_data-check,check,check_type,check_type-controversial,check_type-is_action,check-example,check-filter,format,retention,check-has_example,check-has_file_path,check-has_filter,required_data-example,required_data-filter,required_data-has_example,required_data-has_file_path,required_data-has_filter,required_sub_data-example,required_sub_data-filter,required_sub_data-has_example,required_sub_data-has_file_path,required_sub_data-has_filter,omb_id-legacy,check_key,check_last_updated,check_last_updated-epoch,m2131_lookup_last_updated,m2131_lookup_last_updated-epoch,m2131_lookup_version,m2131_lookup_version-compatibility</default>
+        <delimiter>,  </delimiter>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <allowCustomValues>true</allowCustomValues>
+        <search>
+          <query>| makeresults 
+| foreach `omb-m2131-fields`
+    [| eval &lt;&lt;FIELD&gt;&gt; = 1 ]
+| fields - _time
+| fieldsummary 
+| fields field</query>
+        </search>
+      </input>
+      <input type="link" token="pil_reset_fields_included" id="pil_reset_fields_included" searchWhenChanged="true">
+        <label></label>
+        <choice value="1">Reset Included Fields</choice>
+        <change>
+          <condition value="1">
+            <set token="form.fields-included"></set>
+            <set token="form.pil_reset_fields_included"></set>
+          </condition>
+        </change>
+      </input>
+      <html>
+        <style>
+            div[data-view="views/dashboard/form/GlobalFieldset"] .input-checkbox label:first-child
+            {
+                display: none;
+            }
+            
+            .hide-global-filters
+            {
+                margin-top: 2px !important;
+            }
+            
+            #gil_all_clear_search div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button {
+                border: 1px #999 outset;
+            }
+
+            #input_page div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_ell div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_check_id div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+            {
+              width: 150px !important;
+            }
+            
+            #input_cgp div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_lcl div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+            {
+              width: 200px !important;
+            }
+            
+            #input_lc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_rdc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_rd div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_rsd div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+            #input_check div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+            {
+              width: 400px !important;
+            }
+            .fieldset .input {
+              width:auto !important;
+            }
+            
+          
+            div#fields_included,
+            div#fields_excluded
+            {
+              width: 80% !important;
+            }
+          
+          
+            #fields_excluded div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"] {
+              width: 100% !important;
+            }
+            #fields_excluded div[data-view="splunkjs/mvc/multidropdownview"] {
+              width: 100% !important;
+              margin-right: auto !important;
+            }
+           
+            #fields_included div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"] {
+              width: 100% !important;
+            }
+            #fields_included div[data-view="splunkjs/mvc/multidropdownview"] {
+              width: 100% !important;
+              margin-right: auto !important;
+            }
+           
+            #general_search div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"] {
+              width: 750px !important;
+            }
+           
+            .fieldset .input {
+              width: auto;
+            }
+            
+            a.edit-other {
+              display: none;
+            }
+            a.edit-export {
+              display: none;
+            }
+            
+            #bar svg .highcharts-background {
+                fill: #212527;
+            }
+            
+            div#guid_input .splunk-textinput[data-view="splunkjs/mvc/textinputview"] 
+            {
+                min-width: 400px !important;
+            }
+            
+            div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button {
+              border: 1px #999 outset;
+            }
+            
+            #input_page div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_cgp div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["any-*","NULL"]']),
+            #input_ell div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_lcl div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_lc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_rdc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_rd div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_rsd div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_check div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #input_check_id div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #fields_included div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["order","page","check_id","hierarchy","cisa_guidance_priority","event_logging_level","log_category-label","log_category","log_category-short","required_data_category","required_data","required_sub_data","required_data-check","required_sub_data-check","check","check_type","check_type-controversial","check_type-is_action","check-example","check-filter","format","retention","check-has_example","check-has_file_path","check-has_filter","required_data-example","required_data-filter","required_data-has_example","required_data-has_file_path","required_data-has_filter","required_sub_data-example","required_sub_data-filter","required_sub_data-has_example","required_sub_data-has_file_path","required_sub_data-has_filter","omb_id-legacy","check_key","check_last_updated","check_last_updated-epoch","m2131_lookup_last_updated","m2131_lookup_last_updated-epoch","m2131_lookup_version","m2131_lookup_version-compatibility"]']),
+            #fields_excluded div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*-guid","guid_key","*-prev"]']),
+            #input_check_id div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #check_example_input div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+            #check_filter_input div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]'])
+            {
+              border: #B69231 1px solid !important;
+            }
+            
+            #check_type button:first-child:not([label="All"]),
+            #check_has_example button:first-child:not([label="All"]),
+            #check_has_filter button:first-child:not([label="All"]),
+            #check_has_file_path button:first-child:not([label="All"]),
+            #check_type_controversial button:first-child:not([label="All"]),
+            #check_type_is_action button:first-child:not([label="All"])
+            {
+              border: #B69231 1px solid !important;
+            }
+            
+            div#general_search div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"]:not(div[data-test-value='*']):not(div[data-test-value='']),
+            div#guid_input div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"]:not(div[data-test-value='*']):not(div[data-test-value=''])
+            {
+              border: #B69231 1px solid !important;
+              border-radius: 3px !important;
+            }
+
+            div[data-test="popover"][tabindex]
+            {
+                opacity: .9
+            }
+
+            
+        </style>
+      </html>
+    </panel>
+  </row>
+  <row depends="$toggle-charts$">
+    <panel depends="$toggle-chart1$">
+      <title>Chart #1</title>
+      <input type="dropdown" token="chart1-field1" searchWhenChanged="true">
+        <label>Field on Left</label>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search base="pdf">
+          <query>| fieldsummary maxvals=1
+| fields field</query>
+        </search>
+        <default>event_logging_level</default>
+      </input>
+      <input type="dropdown" token="chart1-field2" searchWhenChanged="true">
+        <label>Field in Legend</label>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search base="pdf">
+          <query>| fieldsummary maxvals=1
+| fields field</query>
+        </search>
+        <default>check_type</default>
+      </input>
+      <chart>
+        <search base="results">
+          <query>| chart count OVER $chart1-field1$ by $chart1-field2$</query>
+        </search>
+        <!--<option name="charting.fieldColors">{$chart1-field1|s$: 0xD55E00, $chart1-field2|s$: 0x56B4E9}</option>-->
+        <option name="charting.axisTitleY.text">Count</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel depends="$toggle-chart2$">
+      <title>Chart #2</title>
+      <input type="dropdown" token="chart2-field1" searchWhenChanged="true">
+        <label>Field on Left</label>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search base="pdf">
+          <query>| fieldsummary maxvals=1
+| fields field</query>
+        </search>
+        <default>log_category-label</default>
+      </input>
+      <input type="dropdown" token="chart2-field2" searchWhenChanged="true">
+        <label>Field in Legend</label>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search base="pdf">
+          <query>| fieldsummary maxvals=1
+| fields field</query>
+        </search>
+        <default>required_data_category</default>
+      </input>
+      <chart>
+        <search base="results">
+          <query>| chart count OVER $chart2-field1$ by $chart2-field2$</query>
+        </search>
+        <!--<option name="charting.fieldColors">{$chart2-field1|s$: 0xD55E00, $chart2-field2|s$: 0x56B4E9}</option>-->
+        <option name="charting.axisTitleY.text">Count</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row depends="$__HIDE__$">
+    <panel>
+      <title>Base Search: pdf</title>
+      <table>
+        <search id="pdf">
+          <query>| inputlookup `m2131`
+            | sort order</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>10m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Memo Details</title>
+      <table>
+        <title>$check_count$</title>
+        <search base="pdf" id="results">
+          <progress>
+            <eval token="check_count"></eval>
+          </progress>
+          <done>
+            <eval token="check_count">if($job.resultCount$ &gt; 0, tostring($job.resultCount$, "commas")." checks found", "")</eval>
+          </done>
+          <query>| fields - *spreadsheet
+| eval cisa_guidance_priority = "any-".cisa_guidance_priority
+| fillnull value="NULL"
+| search page IN($page$) cisa_guidance_priority IN($cgp$) event_logging_level IN($ell$) log_category-label IN($log_category-label$) log_category IN($log_category$) required_data_category IN($required_data_category$) required_data-check IN($required_data-check$) required_sub_data-check IN($required_sub_data-check$) check IN($check$) check_type IN($check_type$) check_key IN($check_id$) guid_key IN($guid_key$) 
+    check-has_example IN($check-has_example$) 
+    check-has_filter IN($check-has_filter$) 
+    check-has_file_path IN($check-has_file_path$) check_type-controversial IN($check_type-controversial$) check_type-is_action IN($check_type-is_action$)
+| foreach check-example, check-filter
+    [| eval &lt;&lt;FIELD&gt;&gt; = split('&lt;&lt;FIELD&gt;&gt;', ";")
+        ]
+| search
+    check-example IN($check-example-input$) 
+    check-filter IN($check-filter-input$)
+| tojson output_field=_raw
+$general_search$
+| fields - _raw
+| eval cisa_guidance_priority = replace(cisa_guidance_priority, "^any-", "")
+| foreach * 
+    [| eval &lt;&lt;FIELD&gt;&gt; = nullif('&lt;&lt;FIELD&gt;&gt;', "NULL")
+        ]
+<!--| fields page, event_logging_level, log_category*, required_data_category, required_data, required_sub_data, required_data-check, required_sub_data-check, check, check_type, required_data-*, required_sub_data-*, *-->
+
+<!--| fields order, page, event_logging_level, log_category, log_category-short, required_data_category, required_data, required_sub_data, required_data-check, required_sub_data-check, check, check_type, check_id, -->
+<!--    , check_type-*, check-*, required_data-*, required_sub_data-*, omb_id-legacy-->
+<!--    , *guid*, check_key, check_id-prev, *last_updated*, *-->
+<!--| fields `omb-m2131-fields`-->
+| fields $fields-included$
+| fields - $fields-excluded$
+    </query>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">$toggle-word_wrap$</option>
+      </table>
+    </panel>
+  </row>
+</form>

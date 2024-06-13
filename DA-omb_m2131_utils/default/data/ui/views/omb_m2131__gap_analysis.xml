@@ -1,0 +1,1230 @@
+<form version="1.1" theme="dark" hideEdit="true" hideExport="true">
+  <label>OMB M-21-31 - Gap Analysis</label>
+  <init>
+    <set token="viz_kg_legend_1">1</set>
+    <unset token="viz_kg_legend_2"></unset>
+    <set token="link_visible">false</set>
+  </init>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="id_check_type" id="id_check_type">
+      <label>Type of Checks</label>
+      <choice value="*">All Types</choice>
+      <choice value="Field">Fields</choice>
+      <choice value="Data">Data Sources</choice>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="id_color_mode" id="id_color_mode">
+      <label>Color Mode</label>
+      <choice value="overall">Overall Compliance Score</choice>
+      <choice value="dcs">Data Collection Status</choice>
+      <choice value="dis">Data In SIEM</choice>
+      <choice value="query">Check Has Query</choice>
+      <default>overall</default>
+      <initialValue>overall</initialValue>
+      <change>
+        <condition value="overall">
+          <set token="viz_kg_legend_1">1</set>
+          <unset token="viz_kg_legend_2"></unset>
+        </condition>
+        <condition value="dcs">
+          <set token="viz_kg_legend_1">1</set>
+          <unset token="viz_kg_legend_2"></unset>
+        </condition>
+        <condition value="dis">
+          <set token="viz_kg_legend_1">1</set>
+          <unset token="viz_kg_legend_2"></unset>
+        </condition>
+        <condition value="query">
+          <unset token="viz_kg_legend_1"></unset>
+          <set token="viz_kg_legend_2">1</set>
+        </condition>
+      </change>
+    </input>
+    <input type="multiselect" token="im_ell" id="im_ell">
+      <label>Event Logging Level</label>
+      <choice value="*">All</choice>
+      <choice value="0">Level 0</choice>
+      <choice value="1">Level 1</choice>
+      <choice value="2">Level 2</choice>
+      <choice value="3">Level 3</choice>
+      <default>*</default>
+      <delimiter>, </delimiter>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="im_lcl" searchWhenChanged="false" id="im_lcl">
+      <label>Log Category - Label</label>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+      <delimiter>, </delimiter>
+      <fieldForLabel>log_category-label</fieldForLabel>
+      <fieldForValue>log_category-label</fieldForValue>
+      <search>
+        <query>| inputlookup m2131
+| stats c by log_category-label</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="im_lc" searchWhenChanged="false" id="im_lc">
+      <label>Log Category</label>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+      <delimiter>, </delimiter>
+      <fieldForLabel>log_category</fieldForLabel>
+      <fieldForValue>log_category</fieldForValue>
+      <search>
+        <query>| inputlookup m2131
+| eval log_category = trim(
+        case(match(log_category, "(?i)(windows)")
+            , replace(log_category, "^(.+?Windows).+$", "\1"),
+            match(log_category, "(?i)(container)")
+            , "Container",
+            TRUE(), replace(log_category, "^([^\(]+)(?:\(.+)?$", "\1")))
+| stats c by log_category</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="im_rdc" searchWhenChanged="false" id="im_rdc">
+      <label>Required Data Category</label>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+      <delimiter>,  </delimiter>
+      <fieldForLabel>required_data_category</fieldForLabel>
+      <fieldForValue>required_data_category</fieldForValue>
+      <search>
+        <query>| inputlookup m2131
+| stats c by required_data_category</query>
+      </search>
+      <allowCustomValues>true</allowCustomValues>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="im_dcs" id="im_dcs">
+      <label>Data Collection Status</label>
+      <choice value="coverage-data_collection_status=* OR NOT coverage-data_collection_status=*">All</choice>
+      <choice value="coverage-data_collection_status IN(&quot;y&quot;, &quot;yes&quot;)">Yes</choice>
+      <choice value="coverage-data_collection_status IN(&quot;n&quot;, &quot;no&quot;)">No</choice>
+      <choice value="coverage-data_collection_status IN(&quot;p&quot;, &quot;partial&quot;)">Partial</choice>
+      <choice value="coverage-data_collection_status IN(&quot;?&quot;, &quot;unknown&quot;)">Unknown</choice>
+      <choice value="coverage-data_collection_status IN(&quot;na&quot;, &quot;n/a&quot;)">N/A</choice>
+      <default>coverage-data_collection_status=* OR NOT coverage-data_collection_status=*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="multiselect" token="im_dis" id="im_dis">
+      <label>Data Availability Status</label>
+      <choice value="coverage-data_in_siem=* OR NOT coverage-data_in_siem=*">Any</choice>
+      <choice value="coverage-data_in_siem IN(&quot;y&quot;, &quot;yes&quot;)">Yes</choice>
+      <choice value="coverage-data_in_siem IN(&quot;n&quot;, &quot;no&quot;)">No</choice>
+      <choice value="coverage-data_in_siem IN(&quot;p&quot;, &quot;partial&quot;)">Partial</choice>
+      <choice value="coverage-data_in_siem IN(&quot;?&quot;, &quot;unknown&quot;)">Unknown</choice>
+      <choice value="coverage-data_in_siem IN(&quot;na&quot;, &quot;n/a&quot;)">N/A</choice>
+      <default>coverage-data_in_siem=* OR NOT coverage-data_in_siem=*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="dropdown" token="id_query_grouping" id="id_query_grouping" depends="$__HIDE__$">
+      <label>Group Queries by</label>
+      <choice value="query">Query</choice>
+      <choice value="lc">Log Category</choice>
+      <choice value="rdc">Required Data Category</choice>
+      <choice value="lc,rdc">Log Cat. &amp; Req. Data. Cat.</choice>
+      <default>query</default>
+      <initialValue>query</initialValue>
+    </input>
+    <input type="multiselect" token="target_dataset" id="im_dataset">
+      <label>Target Dataset(s)</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>value</fieldForValue>
+      <search base="m2131_status_macros_and_lookups">
+        <query/>
+      </search>
+      <delimiter> ,</delimiter>
+    </input>
+    <input type="text" token="it_general_search" searchWhenChanged="true" id="it_general_search">
+      <!--======================-->
+      <!--General Search-->
+      <!--======================-->
+      <label>Splunk Query/Keyword Filter</label>
+      <default></default>
+      <change>
+        <condition value="">
+          <set token="general_search"></set>
+        </condition>
+        <condition>
+          <set token="general_search">| tojson output_field=_raw | search $it_general_search$ | fields - _raw</set>
+        </condition>
+      </change>
+    </input>
+  </fieldset>
+  <row depends="$__HIDE__$">
+    <panel>
+      <html>
+      <style>
+          #it_general_search {
+              width: 750px !important;
+           }
+          #it_general_search {
+              width: 500px !important;
+           }
+           
+          #im_dataset div[data-view="splunkjs/mvc/multidropdownview"],
+          #im_dataset div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+          {
+              width: 500px !important;
+              margin-right: auto !important;
+          }
+           
+          #im_lcl div[data-view="splunkjs/mvc/multidropdownview"],
+          #im_lcl div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+          #im_lc div[data-view="splunkjs/mvc/multidropdownview"],
+          #im_lc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+          #im_rdc div[data-view="splunkjs/mvc/multidropdownview"],
+          #im_rdc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+          {
+              width: 300px !important;
+          }
+          
+          .fieldset .input {
+            width:auto !important;
+          }
+                    
+          div#id_check_type button:first-child:not([label="All Types"]),
+          div#id_color_mode button:first-child:not([label="Overall Compliance Score"]),
+          div#id_query_grouping button:first-child:not([label="Query"])
+          {
+              border: #B69231 1px solid;
+          }
+          
+          div#it_general_search div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"]:not(div[data-test-value='*']):not(div[data-test-value=''])
+          {
+              border: #B69231 1px solid !important;
+              border-radius: 3px !important;
+          }
+          
+          #im_ell div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_lcl div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_lc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_rdc div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_dcs div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["coverage-data_collection_status=* OR NOT coverage-data_collection_status=*"]']),
+          #im_dis div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["coverage-data_in_siem=* OR NOT coverage-data_in_siem=*"]'])
+          
+          {
+              border: #B69231 1px solid !important;    
+          }
+
+      </style>
+    </html>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Macros and lookups in multiselect</title>
+      <table>
+        <search id="m2131_status_macros_and_lookups">
+          <query>| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/configs/conf-macros
+    search="m2131-status"
+    f=definition 
+    [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+| fields title, definition 
+| where 
+    match(lower(title), "^(?:omb-)?m2131-status-[\w\-\.]+$$")
+    AND match(definition, "^[\w\-\.,\s]+$$")
+    AND NOT match(definition, "[\r\n]")
+    AND NOT match(title, "^(?:omb-)?m2131-status-(fields|schema)")
+| eval
+    type = "Macro",
+    value = definition 
+| sort title 
+| fields type, title, value
+| append 
+    [| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/data/transforms/lookups 
+        f=title
+        search="m2131-status" 
+        [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+    | fields title 
+    | where match(lower(title), "^(?:omb-)?m2131-status")
+    | eval 
+        type = "Lookup",
+        value = title 
+    | fields type, title, value
+    | rex field=title "^(?:omb-)?(?&lt;normalized_name&gt;m2131-status.*$$)"
+    | eventstats 
+        values(title) AS title:all
+        by normalized_name
+    | fields - normalized_name
+    | eval type = if(mvcount('title:all')&gt;1 AND match(title, "^m2131-status"), "Lookup (Alias)", type)
+    | sort type, title
+          ]
+| eval label = "[".type."] - ".title</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Determine which datasets to analyze</title>
+        <search id="get_target_dataset_names">
+          <progress>
+            <condition>
+              <set token="q_dataset_names">$job.search$</set>
+              <unset token="dataset_snippet"></unset>
+            </condition>
+          </progress>
+          <done>
+            <condition>
+              <set token="dataset_snippet">$result.snippet$</set>
+            </condition>
+          </done>
+          <query>| makeresults
+            ```
+            | eval 
+                prefix = "| inputlookup append=true ",
+                suffix_for_groups = " WHERE coverage-group_label=* ",
+                snippet_for_groups = prefix.replace($target_dataset|s$, ",\s*", suffix_for_groups.prefix).suffix_for_groups,
+                snippet = prefix.replace($target_dataset|s$, ",\s*", prefix)
+            ```
+            | eval 
+                prefix = "| inputlookup append=true ",
+                ```
+                suffix_for_groups = " WHERE coverage-group_label=* ",
+                ```
+                suffix_for_groups = "",
+                dataset = split(replace($target_dataset|s$, "\s*,\s*", ","), ",")
+            | mvexpand dataset
+            | eval
+                final_suffix = suffix_for_groups."| eval m2131_status_lookup_name = coalesce(m2131_status_lookup_name, \"".dataset."\"), resolved_group = coalesce(resolved_group, 'coverage-group_label', \"".dataset."\") ", 
+                snippet_for_groups = prefix.dataset.final_suffix,
+                snippet = prefix.dataset.final_suffix
+            | stats 
+                values(snippet_for_groups) AS snippet_for_groups
+                values(snippet) AS snippet
+            | eval snippet_for_groups = mvjoin(snippet_for_groups, "")
+            | eval snippet = mvjoin(snippet, "")</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>590s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row id="r_kg_and_sp">
+    <panel id="viz_kg_checks">
+      <viz type="network-diagram-viz.network-diagram-viz" id="viz_kg">
+        <search>
+          <query>| makeresults 
+| eval _makeresults = 1
+$dataset_snippet$
+| where isNull(_makeresults)
+| `omb-m2131-link_to_status`
+
+| search NOT 'check-is_relevant' IN("n", "no")
+```
+===================
+Create objects
+===================
+```
+| eval
+    index = replace(lower(if(
+            match(log_category, "^(?i)(network|cloud|operating|privileged|system|data loss)")
+            , replace(replace(log_category, "^(\S+ \S+)\s.+$$", "\1"), "\s", "_")
+            , replace(log_category, "^(\S+)\s.+$$", "\1"))
+        ), "-", ""),
+    log_category = trim(
+        case(match(log_category, "(?i)(windows)")
+            , replace(log_category, "^(.+?Windows).+$", "\1"),
+            match(log_category, "(?i)(container)")
+            , "Container",
+            TRUE(), replace(log_category, "^([^\(]+)(?:\(.+)?$$", "\1")))
+            
+            
+| search 
+    check_type IN($id_check_type|s$)
+    event_logging_level IN($im_ell$)
+    log_category-label IN($im_lcl$)
+    log_category IN($im_lc$)
+    required_data_category IN($im_rdc$)
+    $im_dcs$ 
+    $im_dis$
+
+$general_search$
+
+```-----------
+log_category
+-------------```
+| appendpipe
+    [ | where isNull(objectset)
+    | fields log_category, index, log_category-guid
+    | stats 
+        values(log_category-guid) AS log_category-guid
+        first(index) AS index by log_category
+    | eval 
+        objectset = "log_category",
+        node_name = log_category,
+        from = mvjoin('log_category-guid', ";"),
+        viz:nodeText = log_category,
+        viz:value = "Log Category: ".log_category,
+        viz:color = "#D2D0CF",
+        viz:type = case(
+                index == "antivirus", coalesce("spider", "user-secret"),
+                index == "application", "code",
+                index == "authentication", coalesce("id-badge", "ticket-alt"),
+                index == "cloud_aws", coalesce("aws", "cloud"),
+                index == "cloud_azure", coalesce("microsoft", "windows", "cloud"),
+                index == "cloud_environments", "cloud",
+                index == "cloud_gcp", coalesce("google", "cloud"),
+                index == "container", coalesce("cubes", "cube", "docker"),
+                index == "data_loss", coalesce("share-square", "share"),
+                index == "database", "database",
+                index == "email", "envelope",
+                index == "identity", coalesce("user", "id-badge", "user-check"),
+                index == "mainframes", "server",
+                index == "mobile", "mobile-alt",
+                index == "network_device", coalesce("network-wired", "ethernet"),
+                index == "network_traffic", "wifi",
+                index == "operating_systems", case(
+                    match(log_category, "(?i)(bsd)"), "linux",
+                    match(log_category, "(?i)(windows)"), "windows",
+                    match(log_category, "(?i)(mac)"), "apple",
+                    TRUE(), coalesce("tv", "laptop", "laptop-code")),
+                index == "pki", "certificate",
+                index == "privileged_identity", coalesce("user-graduate", "user"),
+                index == "system_configuration", coalesce("heartbeat", "laptop-medical", "laptop-code"),
+                index == "virtualization", coalesce("layer-group", "buffer"),
+                index == "vulnerability", coalesce("radiation", "radiation-alt"),
+                TRUE(), "question"),
+        loc = json_object(
+            "large", json_object(
+                "663D3F41-59F8-17D8-3692-3AAD60E5E5B1", json_object("x", -273, "y", 747)
+                , "Anti-Virus and Behavior-Based Malware Protection", json_object("x", -273, "y", 747)
+                , "1EE84598-259A-1ABB-42C1-D9A15468F6D5;6A045E82-4C06-9E16-60F1-44067B33F870", json_object("x", 90, "y", -858)
+                , "Application Level", json_object("x", 90, "y", -858)
+                , "3AD1485A-65EF-5F1D-7D71-BBC24E0466A4", json_object("x", -1522, "y", -661)
+                , "Authentication and Authorization", json_object("x", -1522, "y", -661)
+                , "62F22019-ACCE-604F-93E3-4F219952831F", json_object("x", 1756, "y", -42)
+                , "Cloud AWS", json_object("x", 1756, "y", -42)
+                , "21D16799-B3CB-F183-5207-69E2912E92E7", json_object("x", 1174, "y", -58)
+                , "Cloud Azure", json_object("x", 1174, "y", -58)
+                , "1B8ED4C0-8D78-3E16-3205-6B35D1E15164;23B86D45-143D-300D-C0AD-EC6A5F0EBF74", json_object("x", 841, "y", -521)
+                , "Cloud Environments", json_object("x", 841, "y", -521)
+                , "5B5556F6-3918-81BC-EA77-50E4B9CC5447", json_object("x", 1418, "y", 383)
+                , "Cloud GCP", json_object("x", 1418, "y", 383)
+                , "Container - Cluster/Pod Events", json_object("x", -1713, "y", -371)
+                , "110E8B4E-6CF1-3301-1C14-9A91642AF310;17BAD4A4-1C4C-CB3A-3496-DD63590658DD;2D2C051E-9FDA-A522-2FDD-F705EDA5DDB4;6C23F540-64A3-0D1E-553D-CE9131FBAA29;75030722-5056-7C5D-4A16-78AB752B41F8", json_object("x", -1170, "y", -977)
+                , "Container", json_object("x", -1170, "y", -977)
+                , "Container - Engine", json_object("x", -2334, "y", -569)
+                , "Container - Image", json_object("x", -2259, "y", -733)
+                , "Container - OS", json_object("x", -1170, "y", -977)
+                , "Container - Supply Chain", json_object("x", -2031, "y", -62)
+                , "3E3D83F8-2403-7816-9216-924758CB3FA3", json_object("x", 297, "y", 626)
+                , "Data Loss Prevention", json_object("x", 297, "y", 626)
+                , "5D813BDB-127A-D387-7A2D-54D1C604FA22", json_object("x", -1591, "y", 1246)
+                , "Database Level", json_object("x", -1591, "y", 1246)
+                , "4A74089B-2C6A-2A9C-7CEA-1BE311E23BD1;4F4119CC-D863-BDF6-BAB9-D2355B3BFFDC;632912D0-7D86-981A-54E6-534A5FF84155;6CB469A7-3E12-B8A4-1D77-CC1E677D06DF", json_object("x", 540, "y", 1055)
+                , "Email Filtering, Spam, and Phishing", json_object("x", 540, "y", 1055)
+                , "5291DC87-679D-86B0-73E4-ED66730D63DE", json_object("x", -417, "y", 1033)
+                , "Identity &amp; Credential Management", json_object("x", -417, "y", 1033)
+                , "279E4F5D-3955-92C8-766F-513A70221CBF", json_object("x", -1900, "y", 1208)
+                , "Mainframes", json_object("x", -1900, "y", 1208)
+                , "4F221933-3A45-AE40-5DA6-E27D5303DCFF;743148AD-4E91-8049-22A6-1C8B625475CF", json_object("x", -1142, "y", 573)
+                , "Mobile", json_object("x", -1142, "y", 573)
+                , "1064F6D7-2CCE-BAB1-6EB4-759402364966;34ACA54B-5A88-CABC-7EC2-4A742EAE281F;4CB17FAC-102C-F376-333C-00B19E4D2097;7342C59E-3287-308A-217D-6BB7D10BA471;78C19458-22F3-158B-4572-72343C97E9D1;838A4695-F2FD-1751-B593-52A27D6F9133", json_object("x", 286, "y", 66)
+                , "Network Device Infrastructure", json_object("x", 286, "y", 66)
+                ```
+                , "740F9166-67C9-1A13-360B-26026C9DFE21", json_object("x", -2196, "y", 1195)
+                , "Network Traffic", json_object("x", -2196, "y", 1195)
+                ```
+                , "740F9166-67C9-1A13-360B-26026C9DFE21", json_object("x", 0, "y", 0)
+                , "Network Traffic", json_object("x", 0, "y", 0)
+                , "74A3E018-4669-6485-3408-CCF469E92FE2", json_object("x", -653, "y", -256)
+                , "Operating Systems - BSD", json_object("x", -653, "y", -256)
+                , "1E5FD9DB-2725-E879-2708-7F591098F884", json_object("x", -924, "y", -611)
+                , "Operating Systems - MACOS", json_object("x", -924, "y", -611)
+                , "Operating Systems - Windows Infrastructure and Operating Systems", json_object("x", -1098, "y", -252)
+                , "761C8705-1F81-0417-6200-54A1317E9FC3", json_object("x", -1098, "y", -252)
+                , "Operating Systems - Windows", json_object("x", -1098, "y", -252)
+                , "2E71C9D9-7548-B957-25EB-C1F6A21118BB", json_object("x", -1751, "y", 1186)
+                , "PKI Infrastructure", json_object("x", -1751, "y", 1186)
+                , "3C22DC0B-6FB2-B07B-2950-6FE42569A758", json_object("x", -724, "y", 1066)
+                , "Privileged Identity &amp; Credential Management", json_object("x", -724, "y", 1066)
+                , "22AAB6CF-1A69-77B0-6FD2-6190412F1560;708E0CF5-8411-09AF-950C-D4625A63743E;7D79D3CC-45EA-AD45-197E-AD26EC2652D7", json_object("x", 108, "y", -331)
+                , "System Configuration and Performance", json_object("x", 108, "y", -331)
+                , "7B6DF7A6-2B70-2A19-170D-31F3B813BDA6", json_object("x", -407, "y", -913)
+                , "Virtualization System", json_object("x", -407, "y", -913)
+                , "31D433D3-236F-86C2-F0A1-3831FD62A3F3", json_object("x", -774, "y", 197)
+                , "Vulnerability Assessments", json_object("x", -774, "y", 197)
+                )
+            )
+    ]
+    ```/log_category```
+    
+```----
+check
+-------```
+| appendpipe
+    [| where isNull(objectset)
+    | fields log_category, check, check_type, check_id, coverage-data_collection_status, coverage-data_in_siem, check-guid, query
+    | rename coverage-data_collection_status AS status-data, coverage-data_in_siem AS status-siem    
+    | stats 
+        values(check-guid) AS check-guid
+        values(log_category) AS log_category
+        first(check_type) AS check_type
+        values(check_id) AS check_id-all
+        c(check_id) AS check_id-all:c
+        c(eval(case(lower('status-data') IN("y", "yes"), check_id))) AS check_id-status-data-y:c
+        c(eval(case(lower('status-data') IN("p", "partial"), check_id))) AS check_id-status-data-p:c
+        c(eval(case(NOT lower('status-data') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-data-n:c
+        c(eval(case(lower('status-siem') IN("y", "yes"), check_id))) AS check_id-status-siem-y:c
+        c(eval(case(lower('status-siem') IN("p", "partial"), check_id))) AS check_id-status-siem-p:c
+        c(eval(case(NOT lower('status-siem') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-siem-n:c
+        c(query) AS query:c
+        by check
+    | foreach data, siem
+        [| eval score-status-&lt;&lt;FIELD&gt;&gt; = ((coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-y:c', 0)+(coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-p:c', 0)/2))/'check_id-all:c')*100
+            ]
+    | eval 
+        objectset = "check",
+        from = mvjoin('check-guid', ";"),
+        score-status-overall = avg('score-status-data', 'score-status-siem'),
+        score = case(
+            "$id_color_mode$"=="dcs"
+            , 'score-status-data',
+            "$id_color_mode$"=="dis"
+            , 'score-status-siem', 
+            TRUE(), 'score-status-overall'
+            ),
+        node_name = check,
+        viz:type = if(lower(check_type) == "data", coalesce("file", "file-alt", "newspaper"), "font"),
+        viz:nodeText = " ",
+        viz:nodeTextColor = "#000000",
+        viz:nodeTextColor = "#D2D0CF",
+        viz:value = mvjoin('check_id-all', " / "),
+        viz:value = check,
+        viz:value = "Check (".check_type."): ".check,
+        viz:color = case(
+            ```
+            Light Blue: #56B4E9
+            Dark Turquoise: #009E73
+            Faded Yellow: #F0E442
+            Dull Orange: #D55E00
+            Dull Red: #B13232
+            Dark Sea Foam: #009E73
+            ```
+            "$id_color_mode$" IN("query")
+            , case(
+                'query:c' == 0, "#BD1313",
+                'query:c' == 'check_id-all:c', "#009E73",
+                'query:c' != 'check_id-all:c', "#B9B032"
+                ), 
+            "$id_color_mode$" IN("overall", "dcs", "dis")
+            , case(
+              ```
+              score == 100, "#56B4E9",
+              ```
+              score == 100, if(random() % 2 == 1, "#56B4E9", "#009E73"),
+              score &gt;= 90, "#009E73",
+              ```
+              score &gt;= 80, "#F0E442",
+              score &gt;= 80, "#DED33D",
+              score &gt;= 0, "#B13232"
+              score &gt;= 0, "#C13232"
+              ```
+              score &gt;= 80, "#B9B032",
+              score &gt;= 40, "#D55E00",
+              score &gt;= 0, "#BD1313"
+              ),
+            TRUE(), "#000000")
+        ]
+```/check```
+```
+==================
+/Create objects
+==================
+| fields log_category, required_data_category, required_data_category-guid, required_data-check, required_sub_data-check, check, from, objectset, root, loc, viz:*, t_*, score*
+```
+```
+==============
+Create links
+==============
+```
+```-------------------------
+Link log_category to check
+----------------------------```
+| appendpipe
+    [| where isNull(objectset) AND isNull(linkset)
+    | fields log_category, check, log_category-guid, check-guid
+    | eventstats 
+        values(log_category-guid) AS log_category-guid:all
+        by log_category
+    | eventstats 
+        values(check-guid) AS check-guid:all
+        by check
+    | foreach log_category, check
+        [ | eval &lt;&lt;FIELD&gt;&gt;-guid:all = mvjoin('&lt;&lt;FIELD&gt;&gt;-guid:all', ";")
+            ]
+    | stats
+        count AS count-checks
+        by log_category-guid:all, check-guid:all
+    | rename log_category-guid:all AS from, check-guid:all AS to
+    | eval 
+        linkset = "lc_to_c",
+        viz:linkWidth = ('count-checks' % 10) + 1,
+        viz:linkColor = "#008080",
+        ```
+        Purple: #800080
+        Off-White: #F0F0F0
+        Light Grey: #D2D0CF
+        Medium Grey: #949291
+        Slate Grey: #6F6F6F
+        ```
+        viz:linkColor = "#6F6F6F"
+    
+        ]
+```/Link log_category to check```
+```
+================
+/Create links
+================
+```
+| where isNotNull(objectset) OR isNotNull(linkset)
+
+```TODO: Add logic to connect log categories to the general version (e.g., azure to cloud general log)```
+| eventstats c(eval(isNotNull(objectset))) AS node_count
+| eval 
+    layout = case(node_count &gt;= 500, "large", node_count &gt; 100, "medium", TRUE(), "small"),
+    viz:x = case(isNotNull(loc), json_extract(loc, layout.".".from.".x")),
+    viz:y = case(isNotNull(loc), json_extract(loc, layout.".".from.".y"))
+| fields from, to, viz:*, node_name, objectset, linkset, layout, score*, check_id*
+| rename viz:* AS *
+| fields node_name, objectset, linkset, from, to, nodeText, value, color, nodeTextColor, linkText, link*, type, *</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="network-diagram-viz.network-diagram-viz.arrowLocation">none</option>
+        <option name="network-diagram-viz.network-diagram-viz.canZoom">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.clusterBy">none</option>
+        <option name="network-diagram-viz.network-diagram-viz.defaultLinkLength">100</option>
+        <option name="network-diagram-viz.network-diagram-viz.defaultNodeType">circle</option>
+        <option name="network-diagram-viz.network-diagram-viz.draggableNodes">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.drilldownClick">singleOrDouble</option>
+        <option name="network-diagram-viz.network-diagram-viz.enablePhysics">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchy">false</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchyDirection">Top-Down</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchySortMethod">directed</option>
+        <option name="network-diagram-viz.network-diagram-viz.levelSeparation">150</option>
+        <option name="network-diagram-viz.network-diagram-viz.linkTextLocation">bottom</option>
+        <option name="network-diagram-viz.network-diagram-viz.linkTextSize">medium</option>
+        <option name="network-diagram-viz.network-diagram-viz.missingImageURL">/static/app/network-diagram-viz/customimages/404.gif</option>
+        <option name="network-diagram-viz.network-diagram-viz.nodeSpacing">100</option>
+        <option name="network-diagram-viz.network-diagram-viz.nodeTextSize">medium</option>
+        <option name="network-diagram-viz.network-diagram-viz.physicsModel">forceAtlas2Based</option>
+        <option name="network-diagram-viz.network-diagram-viz.shakeTowards">roots</option>
+        <option name="network-diagram-viz.network-diagram-viz.smoothEdgeType">dynamic</option>
+        <option name="network-diagram-viz.network-diagram-viz.smoothEdges">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenNode">nd_node_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenToNode">nd_to_node_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenToolTip">nd_tooltip_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenValue">nd_value_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.wrapNodeText">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="height">700</option>
+        <drilldown>
+          <eval token="d_check_ids">replace('row.value', " / ", ",")</eval>
+          <set token="d_selected_node_cur">$nd_tooltip_token$</set>
+          <eval token="d_selection_changed">if($d_selection_node_cur$ == $d_selection_node_prev$, "no", "yes")</eval>
+          <eval token="d_selected_node_prev">if($d_selection_changed$ == "yes", $nd_tooltip_token$, NULL)</eval>
+          <eval token="show_check_details">if(isNull($show_check_details$) OR (match('row.value', "^\d\.")), 'row.value', NULL)</eval>
+          <eval token="d_check">'row.value'</eval>
+          <eval token="d_check_from">'row.from'</eval>
+          <eval token="d_check_label_category">trim(replace('row.value', "^([^\\(:]+)[\\(:].+$", "$1"))</eval>
+          <eval token="d_check_label_name">trim(replace('row.value', "^[^:]+:\s+(\S.*)$", "$1"))</eval>
+          <!--===CHECKPOINT===-->
+          <!--<eval token="d_check_field_name">lower(replace($d_check_label_category$, "\s", "_"))</eval>-->
+          <eval token="d_check_field_name">lower(replace($d_check_label_category$, "\\s", "_"))</eval>
+          <!--Check if 'row.value' (the tooltip text) starts with "Log Category"-->
+          <eval token="d_check_click_data">json_object("time", "?-".strptime(now(), "%T%z"), "from", 'row.from', "to", 'row.to', "value", 'row.value', "nodeText", 'row.nodeText', "nodeTextColor", 'row.nodeTextColor', "color", 'row.color', "type", 'row.type')</eval>
+          <eval token="d_filter_sp_checks">"search guid_key IN(\"".mvjoin(split('row.from', ";"), "\", \"")."\")"</eval>
+          <!--<eval token="d_check_node_guid">'row.node_guid'</eval>-->
+          <!--<eval token="d_check_node_guid">$row.node_guid$</eval>-->
+          <!--<set token="d_check_node_guid">$row.node_guid$</set>-->
+          <!--<set token="d_check_node_guid">$click.node_guid$</set>-->
+          <!--<eval token="d_check_node_guid">'click.node_guid'</eval>-->
+          <!--<eval token="chosen_check-color-hex">replace('row.color', "#", "0x")</eval>-->
+          <!--<eval token="chosen_check-color-hex">coalesce('row.color', 'chosen_check-color-hex')</eval>-->
+          <!--TEST-->
+          <!--<eval token="test">replace('row.color', "#", "0x")</eval>-->
+          <!--<eval token="test">replace('row.nodeTextColor', "#", "0x")</eval>-->
+          <!--<eval token="test">replace('row.from', "#", "0x")</eval>-->
+          <!--/TEST-->
+        </drilldown>
+      </viz>
+      <html id="viz_kg_legend_2" depends="$viz_kg_legend_2$">
+        <ul id="viz_kg_legend_list">
+          <li id="lgd_left"/>
+          <li style="color: #BD1313">Query Missing</li>
+          <li style="color: #009E73">Query Exists</li>
+          <li id="lgd_right"/>
+        </ul>
+      </html>
+      <html id="viz_kg_legend_1" depends="$viz_kg_legend_1$">
+        <ul id="viz_kg_legend_list" depends="$_leg1_$">
+          <li id="lgd_left"/>
+          <li style="color: #BD1313">0-39%</li>
+          <li style="color: #D55E00">40-79%</li>
+          <li style="color: #B9B032">80-89%</li>
+          <li style="color: #009E73">90-99%</li>
+          <li style="color: #56B4E9">100%</li>
+          <li id="lgd_right"/>
+        </ul>
+      </html>
+      <html>
+        <style>
+          #r_kg_and_sp {
+            display: flex;
+            justify-content: space-between;
+          }
+          
+          #viz_kg_checks {
+            flex-grow: 1;
+          }
+          
+          #viz_kg_legend_list
+          {
+              font-weight: bold; 
+              list-style-type: none;
+              display: flex;
+              margin: 0;
+              width: 100%;
+              /*
+              justify-content: center;
+              */
+              justify-content: space-evenly;
+              gap: 2em;
+          }
+          
+          #lgd_left {
+            flex-grow: 1
+          }
+          #lgd_right {
+            flex-grow: 1
+          }
+          
+          #msg_scroll {
+            font-style: italic;
+            font-size: small;
+            text-align: center;
+            margin-top: 10px;
+          }
+        </style>
+                <div id="msg_scroll">
+          <span id="msg_scroll_value">Scroll down for additional node details</span>
+        </div>
+      </html>
+    </panel>
+    <panel depends="$show_check_details$" id="side_panel">
+      <html>
+        <style>
+          #side_panel {
+            width: 35% !important;
+          }
+          
+          #side_panel .table {
+            border-top: #6F6F6F 1px solid;
+            padding-top: 5px;
+          }
+          
+          /*
+          */
+          #side_panel .dashboard-element-title {
+            font-size: larger;
+          }
+          
+          div#sp_check_breadcrumb {
+            border-bottom: #6F6F6F 1px solid;
+          }
+          
+          span#sp_check_title_header, 
+          span#sp_check_breadcrumb_header, 
+          span#sp_check_sublabel_header {
+            font-weight: bold;
+          }
+          
+          span#sp_check_title_value {
+            font-size: large;
+          }
+          
+          span#sp_check_breadcrumb_value, 
+          span#sp_check_sublabel_value {
+            color: #D2D0CF;
+            font-style: italic;
+          }
+          
+          /*
+          #sp_check_sublabel {
+            color: #D2D0CF;
+            font-style: italic;
+          }
+          */
+          
+          #side_panel .dashboard-row .dashboard-panel .panel-element-row div.single {
+              min-width: 175px;
+          }
+          
+          #side_panel&gt;.dashboard-element-row {
+            display: flex;
+            justify-content: space-between;
+          }
+          
+          #sp_score_overall {
+            flex-grow: 1;
+            width: auto;
+          }
+          
+          #sp_score_dcs,
+          #sp_score_dis {
+            width: auto !important;
+          }
+          
+          /*----------*/
+          
+          span#sp_check_title_header, 
+          span#sp_check_breadcrumb_header, 
+          span#sp_check_sublabel_header, 
+          div#side_panel .dashboard-element-title {
+              color: #b69231;
+          }
+          
+          span#sp_check_title_header, 
+          span#side_panel .dashboard-element-title {
+              font-size: larger;
+          }
+          
+          /*----------*/
+          
+          #sp_score_overall {
+                  flex-grow: 1;
+                  /* width: auto; */
+          }
+          
+          
+          .dashboard-row .dashboard-panel .panel-element-row div.single {
+                  float: none;
+          }
+          
+          
+          .panel-element-row:has(#sp_score_overall) {
+                  /*     border: green 1px solid; */
+                  display: flex;
+                  justify-content: space-between;
+                  flex-wrap: wrap;
+          }
+          
+          .panel-element-row:has(#sp_score_overall) .single {
+          display: inline-grid;
+          align-items: end;
+          /* display: inline-flex; */
+          }
+          
+          
+          #side_panel .dashboard-element-title {
+          color: #D2D0CF;
+          padding: 15px 0 5px 10px;
+          }
+          
+          
+          #sp_score_overall {
+          max-width: 225px;
+          max-height: 100px;
+          max-height: 125px;
+          }
+          
+          #sp_score_dcs,
+          #sp_score_dis {
+          max-width: 175px;
+          /*     min-width: 175px; */
+          min-width: 175px;
+          width: 175px;
+          
+          }
+          
+          /* #sp_score_overall svg.svg-container { */
+          /* height: inherit; */
+          /* } */
+          
+          /* #sp_score_overall g.single-value-under-label.shared-singlevalue-underlabel {
+          transform: translate(75px, 140px);
+          } */
+          
+          /* #sp_score_dcs svg {
+          display: flex;
+          flex-direction: column;
+          } */
+          
+          /* #sp_score_dcs g.single-value-under-label.shared-singlevalue-underlabel, #sp_score_dis g.single-value-under-label.shared-singlevalue-underlabel { */
+          /* transform: translate(20px, 90px); */
+          /*     clear: left; */
+          /* } */
+          
+          #sp_score_dcs, #sp_score_dis {
+          clear: left;
+          }
+          
+          
+        </style>
+        <div id="sp_check_label">
+          <span id="sp_check_title_header">$sp_check_title_header_text$:</span> <span id="sp_check_title_value"> $d_check_label_name|s$</span>
+        </div>
+        <div id="sp_check_sublabel">
+          <span id="sp_check_sublabel_header">Type:</span>
+          <span id="sp_check_sublabel_value"> $chosen_check-type$</span>
+        </div>
+        <div id="sp_check_breadcrumb">
+          <span id="sp_check_breadcrumb_header">Path:</span>
+          <span id="sp_check_breadcrumb_value"> $chosen_check-breadcrumb$</span>
+        </div>
+      </html>
+      <single id="sp_score_overall">
+        <search>
+          <done>
+            <set token="score_color-overall-hex">$result.color_hex$</set>
+          </done>
+          <query>| makeresults 
+| eval score = $chosen_check-score$
+    </query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">[$chosen_check-color-hex|s$,$chosen_check-color-hex|s$]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="underLabel">Score - Overall</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+        <option name="height">150</option>
+      </single>
+      <single id="sp_score_dcs">
+        <title></title>
+        <search>
+          <query>| makeresults 
+| eval score = $chosen_check-score-data$</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">100</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="underLabel">Score - Data Collection Status</option>
+        <option name="unit">%</option>
+      </single>
+      <single id="sp_score_dis">
+        <title></title>
+        <search>
+          <query>| makeresults 
+| eval score = $chosen_check-score-siem$</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">100</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="underLabel">Score - Data in Siem</option>
+        <option name="unit">%</option>
+      </single>
+      <table id="sp_connections">
+        <title>Graphed Connections:</title>
+        <search base="chosen_check_full">
+          <query>
+| stats values(required_data_category) AS required_data_category by log_category</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+      <table id="sp_insight">
+        <title>Data Sources:</title>
+        <search base="chosen_check_query_insight">
+          <query>| stats 
+              values(all-value-index) AS indexes
+              values(all-value-sourcetype) AS sourcetypes
+              values(all-value-host) AS hosts
+              values(all-value-source) AS sources
+              </query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+      <table id="sp_related_queries">
+        <title>Documented Queries:</title>
+        <search base="chosen_check_full">
+          <query>| stats 
+    values(log_category) AS log_category
+    values(required_data_category) AS required_data_category
+    by query
+| fields log_category, required_data_category, query
+| sort log_category, required_data_category</query>
+        </search>
+        <drilldown>
+          <link target="_blank">search?q=$row.query$&amp;earliest=-60m@m&amp;latest=now</link>
+        </drilldown>
+        <option name="drilldown">cell</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">true</option>
+      </table>
+      <table id="sp_fields">
+        <title>Interesting Fields &amp; Their Origin (Extracted From Documented Queries):</title>
+        <search base="chosen_check_query_insight">
+          <query>| stats 
+                values(all-value-datamodel) AS all-value-datamodel
+                values(all-value-index) AS all-value-index
+                values(all-value-sourcetype) AS all-value-sourcetype
+                values(all-value-host) AS all-value-host
+                values(all-value-source) AS all-value-source
+                values(all-field-requested-custom) AS all-field-requested-custom
+                by check_id-level_2
+            | fillnull value=NULL all-value-datamodel, all-value-index, all-value-sourcetype, all-value-host, all-value-source
+            | stats 
+              values(all-field-requested-custom) AS fields
+              by all-value-datamodel, all-value-index, all-value-sourcetype, all-value-host, all-value-source
+            | foreach all-value-datamodel, all-value-index, all-value-sourcetype, all-value-host, all-value-source
+                [| eval &lt;&lt;FIELD&gt;&gt; = nullif('&lt;&lt;FIELD&gt;&gt;', "NULL")
+                    ]
+            | rename all-value-* AS *</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$show_check_details$">
+    <panel>
+      <title>Selected Node - Details</title>
+      <html>
+        <span>
+            <i>Click <a href="$node_details_download_url$">here</a> to <b>export</b> the results shown below.</i>
+        </span>
+      </html>
+      <table>
+        <search>
+          <done>
+            <eval token="node_details_download_filename">"omb-m2131-node_details-".replace('d_check', "[\^a-zA-Z0-9]+", "_")-".strftime(now(), "%Y%m%dT%H%M%z")</eval>
+            <set token="node_details_download_url">/api/search/jobs/$job.sid$/results?isDownload=true&amp;timeFormat=%FT%T.%Q%:z&amp;maxLines=0&amp;count=0&amp;filename=$node_details_download_filename$&amp;outputMode=csv</set>
+          </done>
+          <query>| makeresults
+| eval _makeresults = 1 
+$dataset_snippet$
+| where isNull(_makeresults)
+| `omb-m2131-link_to_status`
+| $d_filter_sp_checks$
+| eval 
+    log_category = trim(
+        case(match(log_category, "(?i)(windows)")
+            , replace(log_category, "^(.+?Windows).+$", "\1"),
+            match(log_category, "(?i)(container)")
+            , "Container",
+            TRUE(), replace(log_category, "^([^\(]+)(?:\(.+)?$", "\1"))),
+    breadcrumb = "\"Level ".mvjoin(mvappend(event_logging_level, log_category, required_data_category, required_data, required_sub_data), "\" &gt; \"")."\""
+    ```
+| eventstats
+    values(check_id) AS check_id-all
+    values(eval(case(lower('status-data') IN("y", "yes"), check_id))) AS check_id-status-data-y
+    values(eval(case(lower('status-data') IN("p", "partial"), check_id))) AS check_id-status-data-p
+    values(eval(case(NOT lower('status-data') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-data-n
+    values(eval(case(lower('status-siem') IN("y", "yes"), check_id))) AS check_id-status-siem-y
+    values(eval(case(lower('status-siem') IN("p", "partial"), check_id))) AS check_id-status-siem-p
+    values(eval(case(NOT lower('status-siem') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-siem-n
+| foreach data, siem
+    [| eval score-status-&lt;&lt;FIELD&gt;&gt; = ((coalesce(mvcount('check_id-status-&lt;&lt;FIELD&gt;&gt;-y'), 0)+(coalesce(mvcount('check_id-status-&lt;&lt;FIELD&gt;&gt;-p'), 0)/2))/mvcount('check_id-all'))*100
+        ]
+    ```
+| eventstats
+    c(check_id) AS check_id-all:c
+    c(eval(case(lower('coverage-data_collection_status') IN("y", "yes"), check_id))) AS check_id-status-data-y:c
+    c(eval(case(lower('coverage-data_collection_status') IN("p", "partial"), check_id))) AS check_id-status-data-p:c
+    c(eval(case(NOT lower('coverage-data_collection_status') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-data-n:c
+    c(eval(case(lower('coverage-data_in_siem') IN("y", "yes"), check_id))) AS check_id-status-siem-y:c
+    c(eval(case(lower('coverage-data_in_siem') IN("p", "partial"), check_id))) AS check_id-status-siem-p:c
+    c(eval(case(NOT lower('coverage-data_in_siem') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-siem-n:c
+    by $d_check_field_name$
+| foreach data, siem
+    [| eval score-status-&lt;&lt;FIELD&gt;&gt; = ((coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-y:c', 0)+(coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-p:c', 0)/2))/'check_id-all:c')*100
+        ]
+| fields - *:c
+| eval 
+    score-status-overall = avg('score-status-data', 'score-status-siem'),
+    score-selected = case(
+        $id_color_mode|s$=="dcs"
+        , 'score-status-data',
+        $id_color_mode|s$=="dis"
+        , 'score-status-siem', 
+        TRUE(), 'score-status-overall'
+        ),
+    viz:type = if(lower(check_type) == "data", coalesce("file", "file-alt", "newspaper"), "font"),
+    viz:color = case(
+        'score-selected' == 100, if(random() % 2 == 1, "#56B4E9", "#009E73"),
+        'score-selected' &gt;= 90, "#009E73",
+        'score-selected' &gt;= 80, "#B9B032",
+        'score-selected' &gt;= 40, "#D55E00",
+        'score-selected' &gt;= 0, "#BD1313")    
+| streamstats c AS marker
+    | eval query = case(
+        marker==1, query." | fields src, dest, action, signature, severity",
+        marker==2, query." | fields src, dest, action, app, category, url_domain, status",
+        TRUE(), query)
+    | fields - marker
+    | fields - breadcrumb, viz:*, score-selected, *-prev, resolved_group, m2131_status_lookup_name
+| fields coverage-group_label, event_logging_level, log_category, required_data_category, required_data-check, required_sub_data-check, check, coverage-data_collection_status, coverage-data_in_siem, score*, coverage-point_of_contact, coverage*, query*, check_type, check*, log*, required_data_category*, required_data*, required_sub_data*, page, format, retention, order, m2131*, guid_key, *</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Chosen Check - Full</title>
+      <table>
+        <search id="chosen_check_full">
+          <done>
+            <set token="chosen_check-score">$result.score-selected$</set>
+            <set token="chosen_check-score-data">$result.score-status-data$</set>
+            <set token="chosen_check-score-siem">$result.score-status-siem$</set>
+            <!--CHECKPOINT-->
+            <!--<set token="chosen_check-name">$result.check$</set>-->
+            <!--<eval token="chosen_check-name">if(NOT match($d_check$, "^Log Category"), $result.check$, replace($d_check$, "^Log Category:\s*", "")</eval>-->
+            <!--<eval token="chosen_check-name">if(NOT match($d_check$, "^Log Category"), $result.check$, replace($d_check$, "^Log Category:\s+", "")</eval>-->
+            <eval token="chosen_check-name">if($d_check_node_category$ != "Log Category", $result.check$, replace($d_check$, "^Log Category: +", "")</eval>
+            <!--<eval token="sp_check_title_header_text">if(NOT match($d_check$, "^Check"), replace($d_check$, "^([^\(:]+)[\(:].*$", "\1"), "Check")</eval>-->
+            <eval token="sp_check_title_header_text">if(NOT match($d_check$, "^Check"), replace($d_check$, "^([^\(:]+)[\(:].*$", "$1"), "Check")</eval>
+            <!--<eval token="sp_check_title_header_text">if(NOT match($d_check$, "^Check"), replace($d_check$, "^([^:]+)[:].*$", "\1"), "Check")</eval>-->
+            <!--/CHECKPOINT-->
+            <eval token="chosen_check-type">if($d_check_label_category$ == "Check", $result.check_type$, "N/A")</eval>
+            <eval token="chosen_check-color-hex">replace($result.viz:color$, "#", "0x")</eval>
+            <set token="chosen_check-color-html">$result.viz:color$</set>
+            <eval token="chosen_check-breadcrumb">if($d_check_label_category$ == "Check", $result.breadcrumb$, "N/A")</eval>
+            <!--<eval token="chosen_check-breadcrumb">if($d_check_label_category$ == "Check", mvjoin($result.breadcrumb:all$, "<br/>"), "N/A")</eval>-->
+            <!--<eval token="chosen_check-breadcrumb">if($d_check_label_category$ == "Check", "<div>".mvjoin($result.breadcrumb:all$, "</div><div>")."</div>", "N/A")</eval>-->
+            <!--<eval token="chosen_check-breadcrumb">if($d_check_label_category$ == "Check", "&lt;span class=\"check_path\">".mvjoin($result.breadcrumb:all$, "&lt;/span>&lt;span class=\"check_path\">")."&lt;/span>", "N/A")</eval>-->
+          </done>
+          <query>| makeresults
+| eval _makeresults = 1 
+$dataset_snippet$
+| where isNull(_makeresults)
+| `omb-m2131-link_to_status`
+| $d_filter_sp_checks$
+| eval 
+    log_category = trim(
+        case(match(log_category, "(?i)(windows)")
+            , replace(log_category, "^(.+?Windows).+$", "\1"),
+            match(log_category, "(?i)(container)")
+            , "Container",
+            TRUE(), replace(log_category, "^([^\(]+)(?:\(.+)?$", "\1"))),
+    breadcrumb = "\"Level ".mvjoin(mvappend(event_logging_level, log_category, required_data_category, required_data, required_sub_data), "\" &gt; \"")."\""
+    ```
+| eventstats
+    values(check_id) AS check_id-all
+    values(eval(case(lower('status-data') IN("y", "yes"), check_id))) AS check_id-status-data-y
+    values(eval(case(lower('status-data') IN("p", "partial"), check_id))) AS check_id-status-data-p
+    values(eval(case(NOT lower('status-data') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-data-n
+    values(eval(case(lower('status-siem') IN("y", "yes"), check_id))) AS check_id-status-siem-y
+    values(eval(case(lower('status-siem') IN("p", "partial"), check_id))) AS check_id-status-siem-p
+    values(eval(case(NOT lower('status-siem') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-siem-n
+| foreach data, siem
+    [| eval score-status-&lt;&lt;FIELD&gt;&gt; = ((coalesce(mvcount('check_id-status-&lt;&lt;FIELD&gt;&gt;-y'), 0)+(coalesce(mvcount('check_id-status-&lt;&lt;FIELD&gt;&gt;-p'), 0)/2))/mvcount('check_id-all'))*100
+        ]
+    ```
+| eventstats
+    c(check_id) AS check_id-all:c
+    c(eval(case(lower('coverage-data_collection_status') IN("y", "yes"), check_id))) AS check_id-status-data-y:c
+    c(eval(case(lower('coverage-data_collection_status') IN("p", "partial"), check_id))) AS check_id-status-data-p:c
+    c(eval(case(NOT lower('coverage-data_collection_status') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-data-n:c
+    c(eval(case(lower('coverage-data_in_siem') IN("y", "yes"), check_id))) AS check_id-status-siem-y:c
+    c(eval(case(lower('coverage-data_in_siem') IN("p", "partial"), check_id))) AS check_id-status-siem-p:c
+    c(eval(case(NOT lower('coverage-data_in_siem') IN("y", "yes", "p", "partial"), check_id))) AS check_id-status-siem-n:c
+    values(breadcrumb) AS breadcrumb:all
+    by $d_check_field_name$
+| foreach data, siem
+    [| eval score-status-&lt;&lt;FIELD&gt;&gt; = ((coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-y:c', 0)+(coalesce('check_id-status-&lt;&lt;FIELD&gt;&gt;-p:c', 0)/2))/'check_id-all:c')*100
+        ]
+| fields - *:c
+| eval 
+    score-status-overall = avg('score-status-data', 'score-status-siem'),
+    score-selected = case(
+        $id_color_mode|s$=="dcs"
+        , 'score-status-data',
+        $id_color_mode|s$=="dis"
+        , 'score-status-siem', 
+        TRUE(), 'score-status-overall'
+        ),
+    viz:type = if(lower(check_type) == "data", coalesce("file", "file-alt", "newspaper"), "font"),
+    viz:color = case(
+        'score-selected' == 100, if(random() % 2 == 1, "#56B4E9", "#009E73"),
+        'score-selected' &gt;= 90, "#009E73",
+        'score-selected' &gt;= 80, "#B9B032",
+        'score-selected' &gt;= 40, "#D55E00",
+        'score-selected' &gt;= 0, "#BD1313")    
+| streamstats c AS marker
+    | eval query = case(
+        marker==1, query." | fields src, dest, action, signature, severity",
+        marker==2, query." | fields src, dest, action, app, category, url_domain, status",
+        TRUE(), query)
+    | fields - marker</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Chosen Check - Query Insight</title>
+      <table>
+        <search base="chosen_check_full" id="chosen_check_query_insight">
+          <query>| `parse_query`</query>
+        </search>
+        <option name="count">1</option>
+      </table>
+    </panel>
+  </row>
+</form>

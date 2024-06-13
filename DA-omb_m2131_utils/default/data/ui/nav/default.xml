@@ -1,0 +1,31 @@
+<nav search_view="search">
+  <view name="omb_m2131__breakdown" default='true'/>
+  <view name="omb_m2131__auto_data_inventory"/>
+  <view name="omb_m2131__gap_analysis"/>
+  <view name="omb_m2131__search_memo"/>
+  <collection label="Documentation">
+    <a href="omb_m2131__getting_started">Getting Started</a>
+    <a href="omb_m2131__knowledge_object_reference">Knowledge Object Reference</a>
+    <a href="omb_m2131__general_usage">General Usage</a>
+  </collection>
+  <collection label="Resources">
+    <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf">[PDF] OMB M-21-31: Improving the Federal Government's Investigative and Remediation Capabilities Related to Cybersecurity Incidents</a>
+    <a target="_blank" href="https://www.cisa.gov/sites/default/files/2023-02/TLP%20CLEAR%20-%20Guidance%20for%20Implementing%20M-21-31_Improving%20the%20Federal%20Governments%20Investigative%20and%20Remediation%20Capabilities_.pdf">[PDF] CISA Guidance for Implementing M-21-31</a>
+    <a target="_blank" href="https://www.fedramp.gov/2023-07-14-fedramp-guidance-for-m-21-31-and-m-22-09/">FedRAMP Guidance for M-21-31 and M-22-09</a>
+    <a target="_blank" href="https://www.whitehouse.gov/briefing-room/presidential-actions/2021/05/12/executive-order-on-improving-the-nations-cybersecurity/">Executive Order (EO) 14028: Improving the Nation's Cybersecurity</a>
+    <a target="_blank" href="https://www.gsa.gov/technology/it-contract-vehicles-and-purchasing-programs/information-technology-category/it-security/executive-order-14028">GSA Summary of EO 14028</a>
+    <a target="_blank" href="https://www.nist.gov/itl/executive-order-14028-improving-nations-cybersecurity/securing-critical-software">NIST Critical Software Definition &amp; Security Measures</a>
+    <a target="_blank" href="https://zerotrust.cyber.gov/">OMB/CISA ZeroTrust Website</a>
+    <a target="_blank" href="https://www.whitehouse.gov/omb/information-for-agencies/memoranda/">All Whitehouse Memos</a>
+    <collection label="Related Memos">
+      <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-30.pdf">[PDF] OMB M-21-30: Protecting Critical Software Through Enhanced Security Measures</a>
+      <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2021/10/M-22-01.pdf">[PDF] OMB M-22-01: Improving Detection of Cybersecurity Vulnerabilities and Incidents on Federal Government Systems through Endpoint Detection and Response</a>
+      <a target="_blank" href="https://www.whitehouse.gov/briefing-room/presidential-actions/2022/01/19/memorandum-on-improving-the-cybersecurity-of-national-security-department-of-defense-and-intelligence-community-systems/">NSM-8: Improving the Cybersecurity of National Security, Department of Defense, and Intelligence Community Systems</a>
+      <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2022/01/M-22-09.pdf">[PDF] OMB M-22-09: Moving the U.S. Government Toward Zero Trust Cybersecurity Principles</a>
+      <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2022/09/M-22-18.pdf">[PDF] OMB M-22-18: Enhancing the Security of the Software Supply Chain through Secure Software Development Practices</a>
+      <a target="_blank" href="https://www.whitehouse.gov/wp-content/uploads/2023/06/M-23-16-Update-to-M-22-18-Enhancing-Software-Security.pdf">[PDF] OMB M-23-16: Update to Memorandum M-22-18</a>
+    </collection>
+  </collection>
+  <view name="search" />
+  <view name="dashboards" />
+</nav>

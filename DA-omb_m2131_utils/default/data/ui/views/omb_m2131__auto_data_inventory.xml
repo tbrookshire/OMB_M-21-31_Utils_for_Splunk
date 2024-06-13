@@ -1,0 +1,1183 @@
+<form version="1.1" theme="dark" hideExport="true" hideEdit="true">
+  <label>OMB M-21-31 - Auto. Data Inventory</label>
+  <description>Grants insight into the environment's data sources by automatically generating a data inventory from the queries documented during deep dives for each OMB M-21-31 check. The categories are based on the "log_category" field in the "omb-m2131" lookup, while the subcategories are based on a mix of the "required_data_category" and "required_data" fields, where appropriate.</description>
+  <init>
+    <set token="ds_full_stats">values(group) AS group values(datamodel) AS datamodel values(index) AS index values(sourcetype) AS sourcetype dc(query) AS query_count by category,subcategory</set>
+    <set token="link_visible">false</set>
+  </init>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="target_dataset" id="im_dataset">
+      <label>Target Dataset(s)</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>value</fieldForValue>
+      <search base="m2131_status_macros_and_lookups">
+        <query/>
+      </search>
+      <delimiter> ,</delimiter>
+    </input>
+    <input type="text" token="it_general_search" searchWhenChanged="true" id="it_general_search">
+      <label>Splunk Query/Keyword Filter</label>
+      <default></default>
+      <change>
+        <condition value="">
+          <set token="general_search"></set>
+        </condition>
+        <condition>
+          <set token="general_search">| tojson output_field=_raw | search $it_general_search$ | fields - _raw</set>
+        </condition>
+      </change>
+    </input>
+    <input type="link" token="gil_all_clear_search" id="gil_all_clear_search" searchWhenChanged="true">
+      <label></label>
+      <choice value="1">Clear Search</choice>
+      <change>
+        <condition value="1">
+          <set token="form.it_general_search"></set>
+          <set token="form.gil_all_clear_search"></set>
+        </condition>
+      </change>
+    </input>
+    <input type="checkbox" token="ic_show_pies">
+      <label></label>
+      <choice value="1">Show Pie Charts</choice>
+      <initialValue>1</initialValue>
+    </input>
+    <input type="checkbox" token="show_more_filters">
+      <label></label>
+      <choice value="1">More Filters</choice>
+      <initialValue>1</initialValue>
+    </input>
+  </fieldset>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Macros and lookups in multiselect</title>
+      <table>
+        <search id="m2131_status_macros_and_lookups">
+          <query>| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/configs/conf-macros
+    search="m2131-status"
+    f=definition 
+    [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+| fields title, definition 
+| where 
+    match(lower(title), "^(?:omb-)?m2131-status-[\w\-\.]+$$")
+    AND match(definition, "^[\w\-\.,\s]+$$")
+    AND NOT match(definition, "[\r\n]")
+    AND NOT match(title, "^(?:omb-)?m2131-status-(fields|schema)")
+| eval
+    type = "Macro",
+    value = definition 
+| sort title 
+| fields type, title, value
+| append 
+    [| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/data/transforms/lookups 
+        f=title
+        search="m2131-status" 
+        [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+    | fields title 
+    | where match(lower(title), "^(?:omb-)?m2131-status")
+    | eval 
+        type = "Lookup",
+        value = title 
+    | fields type, title, value
+    | rex field=title "^(?:omb-)?(?&lt;normalized_name&gt;m2131-status.*$$)"
+    | eventstats 
+        values(title) AS title:all
+        by normalized_name
+    | fields - normalized_name
+    | eval type = if(mvcount('title:all')&gt;1 AND match(title, "^m2131-status"), "Lookup (Alias)", type)
+    | sort type, title
+          ]
+| eval label = "[".type."] - ".title</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Determine which datasets to analyze</title>
+        <search id="get_target_dataset_names">
+          <progress>
+            <condition>
+              <set token="q_dataset_names">$job.search$</set>
+              <unset token="dataset_snippet"></unset>
+            </condition>
+          </progress>
+          <done>
+            <condition>
+              <set token="dataset_snippet">$result.snippet$</set>
+              <eval token="dataset_snippet_for_groups">$result.snippet_for_groups$</eval>
+              <set token="dataset_dc">$result.dataset_dc$</set>
+              <eval token="show_group_pie">if('dataset_dc'&gt;1, 1, NULL)</eval>
+            </condition>
+          </done>
+          <query>| makeresults
+            | eval 
+                prefix = "| inputlookup append=true ",
+                suffix_for_groups = "",
+                dataset = split(replace($target_dataset|s$, "\s*,\s*", ","), ",")
+            | mvexpand dataset
+            | eval
+                final_suffix = suffix_for_groups."| eval m2131_status_lookup_name = coalesce(m2131_status_lookup_name, \"".dataset."\"), resolved_group = coalesce(resolved_group, 'coverage-group_label', \"".dataset."\") ", 
+                snippet_for_groups = prefix.dataset.final_suffix,
+                snippet = prefix.dataset.final_suffix
+            | stats 
+                dc(dataset) AS dataset_dc
+                values(snippet_for_groups) AS snippet_for_groups
+                values(snippet) AS snippet
+                values(coverage-group_label) AS group_labels
+            | eval snippet_for_groups = mvjoin(snippet_for_groups, "")
+            | eval 
+                snippet = mvjoin(snippet, "")
+            </query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>590s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Determine which groups to display in the label</title>
+        <search id="target_dataset_results">
+          <progress>
+            <set token="q_dataset_results">$job.search$</set>
+          </progress>
+          <done>
+            <condition match="isNull('result.group')">
+              <unset token="dataset_group"></unset>
+              <unset token="dataset_header"></unset>
+            </condition>
+            <condition>
+              <set token="dataset_group">$result.group$</set>
+              <set token="dataset_header">$result.header$</set>
+            </condition>
+          </done>
+          <query>| makeresults
+            | eval _makeresults = 1
+            $dataset_snippet$
+            | fields coverage-group_label, resolved_group
+            | rename coverage-group_label AS group
+            | where isNull(_makeresults)
+            
+            | eval 
+                demo_mode = case($env:page|s$=="omb_m2131__breakdown_demo", 1),
+                group = if(isNull(demo_mode), group, coalesce(case(match(group, "\S"), group), "Demo Mode"))
+            | search group = *
+            | eval demo_mode = case($env:page|s$=="omb_m2131__breakdown_demo", 1)
+            | stats 
+                first(demo_mode) AS demo_mode
+                values(resolved_group) AS resolved_group
+                dc(resolved_group) AS group_count
+            | eval 
+                group = case(NOT (resolved_group IN("omb-m2131-status", "m2131-status") AND group_count == 1), "\"".mvjoin(resolved_group, "\", \"")."\""),
+                header = "Dataset",
+                header = if(group_count&gt;1, header."s", header)</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$__CSS__$">
+    <panel>
+      <html>
+      <style id="root_inputs_css">
+          #it_debug_regex, 
+          #it_general_search {
+              width: 750px !important;
+           }
+          #it_debug_regex, 
+          #it_general_search {
+              width: 500px !important;
+           }
+          
+          #im_dataset div[data-view="splunkjs/mvc/dropdownview"] {
+              width: 500px !important;
+              margin-right: auto !important;
+          }
+           
+          #im_dataset div[data-component="splunk-core:/splunkjs/mvc/components/Dropdown"] {
+              width: 500px !important;
+          }
+           
+          #im_dataset div[data-view="splunkjs/mvc/multidropdownview"]
+          {
+              width: 500px !important;
+              margin-right: auto !important;
+          }
+           
+          #im_dataset div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+          {
+              width: 500px !important;
+          }
+          
+          #im_category div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"], 
+          #im_subcategory div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+          #im_index div[data-view="splunkjs/mvc/multidropdownview"],
+          #im_sourcetype div[data-view="splunkjs/mvc/multidropdownview"], 
+          #im_datamodel div[data-view="splunkjs/mvc/multidropdownview"], 
+          #im_query_fields div[data-view="splunkjs/mvc/multidropdownview"]
+          {
+              width: 300px !important;
+              margin-right: auto !important;
+          }
+           
+          #im_category div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"], 
+          #im_subcategory div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+          #im_index div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"],
+          #im_sourcetype div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"], 
+          #im_datamodel div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"], 
+          #im_query_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"] 
+          {
+              width: 300px !important;
+          }
+          .fieldset .input {
+            width:auto !important;
+          }
+          
+      </style>
+      <style id="viz_fixes_css">
+           #pie rect {
+              fill: #212527;
+           }
+           
+          #cby_pies .pie_underlabel {
+              text-align: center;
+              font-size: 13px;
+              font-weight: normal;
+              color: rgb(195, 203, 212);
+          }
+      </style>
+      <style id="pie_max_rest_css">
+        
+          #cby_pies .fieldset .input-link
+          {
+              float: right;
+              margin: 0;
+          }
+          
+          
+          #cby_pies .fieldset .input-link label
+          {
+              margin: 0;
+              height: 0;
+          }
+          
+          
+          #cby_pies .fieldset .input-link button
+          {
+              border: 1px #696969 outset;
+              border-radius: 7px;
+              font-size: 110%;
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+              padding-bottom: 3px !important;
+          }
+        
+      </style>
+      <style id="misc_css">
+          #second_filters .dashboard-panel {
+              margin: 15px 5px 15px 0;
+              border-radius: 14px;
+          }
+          
+          .pie_underlabel {
+              margin: 0;
+          }
+          
+          #cby_pies .panel-body {
+              padding: 0 10px 10px 10px;
+          }
+          
+          
+          
+          
+          div#cby_pies {
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: center
+          }
+          
+          div#cby_pies .dashboard-layout-panel {
+              min-width: 300px;
+          }
+          
+          div#second_filters .fieldset {
+              display: flex;
+              justify-content: center;
+              flex-wrap: wrap;
+              
+          }
+          
+          div#second_filters div[data-component="splunk-core:/splunkjs/mvc/components/Dropdown"],
+          div#second_filters div[data-view="splunkjs/mvc/dropdownview"],
+          div#second_filters .input
+          {
+              flex-grow: 1;
+          }
+          
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(1) button,
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(2) button,
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(3) button,
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(4) button,
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(5) button,
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(6) button
+          {
+              border-color: #B69231;
+          }
+          
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(1) button,
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(2) button,
+          #ic_ds_groupby div[data-test-selected="true"]:nth-child(3) button,
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(4) button,
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(5) button,
+          #ic_ds_groupby div[data-test-selected="false"]:nth-child(6) button
+          {
+              border-color: rgb(195, 203, 212);
+          }
+          
+          #im_group div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_category div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_subcategory div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_datamodel div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_index div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_sourcetype div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]']),
+          #im_ds_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["group","category","subcategory","datamodel","index","sourcetype","query_count"]']),
+          #im_query_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["Context","Query"]'])
+          {
+              border: 1px #B69231 solid !important;
+          }
+          
+          div#it_general_search div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"]:not(div[data-test-value='*']):not(div[data-test-value=''])
+          {
+              border: #B69231 1px solid !important;
+              border-radius: 3px !important;
+          }
+
+
+          #gil_all_clear_search div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button,
+          #il_wrapping div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button
+          {
+              border: 1px #999 outset;
+          }
+          
+          div#il_wrapping button[tabindex] 
+          {
+              border-style: inset !important;
+              border-width: 1px !important;
+          }
+          
+          div#il_wrapping button[tabindex]:not([label="Query Only"])
+          {
+              border: 1px #B69231 inset !important;
+          }
+          
+          #il_wrapping button:not([tabindex])
+          {
+              color: #999
+          }
+
+          
+      </style>
+    </html>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>parsed_snippets</title>
+      <table>
+        <search id="parsed_snippets">
+          <query>| inputlookup $target_dataset$
+              | fields query 
+              | `parse_query`
+              | eval query = 'query-parsed'
+              | streamstats c AS query-group
+              | eval query-hash = md5(query)
+              | join query-hash
+                  [| inputlookup $target_dataset$
+                  | fields check_id, m2131_lookup_version, m2131_lookup_version-compatibility, query
+                  | eval query-hash = case(isNotNull(query), md5(query))
+                  | stats 
+                      delim="&lt;__|__&gt;"
+                      values(check_id) AS check_id
+                      dc(check_id) AS check_id:dc
+                      values(m2131_lookup_version) AS m2131_lookup_version
+                      values(m2131_lookup_version-compatibility) AS m2131_lookup_version-compatibility
+                      values(eval(coalesce(group, 'coverage-group_label'))) AS group
+                      by query-hash
+                  | mvcombine query-hash
+                      ]
+              | foreach check_id, m2131_lookup_version, m2131_lookup_version-compatibility, group
+                  [| eval &lt;&lt;FIELD&gt;&gt; = split('&lt;&lt;FIELD&gt;&gt;', "&lt;__|__&gt;")
+                      ]
+              
+              | fieldformat query-parsed = mvmap('query-parsed', "&gt; ".'query-parsed')
+              | foreach check_id, m2131_lookup_version*
+                  [| eval &lt;&lt;FIELD&gt;&gt; = mvdedup('&lt;&lt;FIELD&gt;&gt;')
+                      ]
+              | fields 
+                  check_id, check_id:dc, group
+                  all-criteria, all-criteria-index, all-criteria-source, all-criteria-sourcetype, all-value-datamodel
+                  all-field, all-field-custom, all-field-requested, all-field-requested-custom
+                  all-value-index, all-value-source, all-value-sourcetype
+                  query-hash, query-group, query-id, query, query-parsed-dc
+                  query-snippet-count-parsed
+                  query-snippet, query-root-parsed, query-parsed
+                  m2131_lookup_version, m2131_lookup_version-compatibility
+              
+              | fields -
+                  query-id-parsed, query-snippet, query-root-parsed, query-parsed
+              | mvexpand check_id
+              
+              | append 
+                  [
+                  | rest splunk_server=local /servicesNS/-/-/data/indexes f=title
+                  | rename title AS rest_index
+                  | fields rest_index
+                      ]
+                | appendpipe
+                    [| fields all-value-index, rest_index
+                    | eval 
+                        dynamic_index = mvfilter(match('all-value-index', "\*")),
+                        sig = md5(mvjoin('all-value-index', ","))
+                    | where isNotNull(dynamic_index) OR isNotNull(rest_index)
+                    | eventstats values(rest_index) AS rest_index 
+                    
+                    | stats 
+                        first(all-value-index) AS all-value-index-original
+                        c 
+                        by dynamic_index, rest_index, sig
+                    | where dynamic_index != "*"
+                    | eval 
+                        parsed_index = "^".replace(replace(dynamic_index, "^\*", ".*?"), "(?&lt;!\.)\*", ".*"),
+                        matched_index = case(match(rest_index, parsed_index), rest_index)
+                    | eventstats c(eval(isNotNull(matched_index))) AS matched_index:c by dynamic_index, sig
+                    | streamstats c(eval('matched_index:c'=0)) AS no_match_marker by dynamic_index, sig
+                    | eval 
+                        matched_index = if('matched_index:c'=0 AND no_match_marker=1, 'all-value-index-original', matched_index),
+                        dynamic_index = if('matched_index:c'=0 AND no_match_marker=1, 'all-value-index-original', dynamic_index)
+                    | fields - all-value-index-original, matched_index:c, no_match_marker
+                    | where isNotNull(matched_index)
+                    | eval 
+                        all-value-index = dynamic_index,
+                        origin-index_resolution = 1
+                        ]
+                    | eval sig2 = coalesce(sig, case(mvcount(mvfilter(match('all-value-index', "\*")))&gt;0, md5(mvjoin('all-value-index', ","))))
+                    | eventstats values(matched_index) AS matched_index-all by sig2
+                    | eval 
+                        static_index = mvfilter(NOT match('all-value-index', "\*")),
+                        all-value-index-resolved = mvappend('matched_index-all', static_index)
+                    | where isNull('origin-index_resolution') AND isNull(rest_index)
+                    | fields - origin-index_resolution, dynamic_index, parsed_index, matched_index*, static_index, sig*, rest_index
+                    
+              | `omb-m2131-link_to_status` 
+              ```Adding this because I don't want the user to get confused when they selected "Cloud Environments" and everything from the other three is missing```
+              | eval log_category-label = if(NOT match('log_category-label', "(?i)(aws|azure|gcp)"), 'log_category-label', mvappend('log_category-label', "Cloud Environments"))
+                      </query>
+          <progress>
+            <set token="expand_panel-queries"></set>
+            <set token="show_data_sources">1</set>
+          </progress>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+    <panel>
+      <title>filtered_snippets</title>
+      <table>
+        <search base="parsed_snippets" id="filtered_snippets">
+          <query>| eval
+                index = 'all-value-index-resolved',
+                sourcetype = 'all-value-sourcetype',
+                datamodel = 'all-value-datamodel',
+                category = 'log_category-label',
+                subcategory = coalesce(required_data_category, if(category!="Vulnerability", required_data, category)),
+                context = mvjoin(hierarchy, "&lt;__|__&gt;")
+
+              $general_search$
+              
+            | fillnull value=NULL group, category, subcategory, datamodel, index, sourcetype, query, context
+            | search $im_group$ $im_category$ $im_subcategory$ $im_datamodel$ $im_index$ $im_sourcetype$
+        
+            | fields group, category, subcategory, datamodel, index, sourcetype, query, query-hash, context, hierarchy, check_id, m2131_lookup_version, m2131_lookup_version-compatibility</query>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$dataset_group$">
+    <panel>
+      <html>
+        <p id="dataset_label" style="font-size: x-large; text-align: center; margin: 0 5px;">
+          <span id="dataset_header" style="font-weight: bold;">$dataset_header$: </span>
+          <span id="dataset_group">$dataset_group$</span>
+        </p>
+    </html>
+    </panel>
+  </row>
+  <row id="cby_pies">
+    <panel depends="$ic_show_pies$">
+      <chart>
+        <search base="filtered_snippets">
+          <query>
+            | stats dc(query-hash) AS count by category
+            | where NOT category IN("*", "NULL")
+            | rename count AS "Number of Distinct Queries"
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="form.im_category">if(NOT match('click.value', "^other"), 'click.value', 'im_category')</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <h3 class="pie_underlabel">Categories</h3>
+      </html>
+    </panel>
+    <panel id="pie_subcategory" depends="$ic_show_pies$">
+      <chart id="pie_subcategory_chart">
+        <search base="filtered_snippets">
+          <query>
+            | stats dc(query-hash) AS count by subcategory
+            | where NOT subcategory IN("*", "NULL")
+            | rename count AS "Number of Distinct Queries"
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="form.im_subcategory">if(NOT match('click.value', "^other"), 'click.value', 'im_subcategory')</eval>
+        </drilldown>
+      </chart>
+      <html id="pie_label_subcategory">
+        <h3 class="pie_underlabel">Subcategories</h3>
+      </html>
+    </panel>
+    <panel depends="$ic_show_pies$">
+      <chart>
+        <search base="filtered_snippets">
+          <query>
+            | stats dc(query-hash) AS count by datamodel
+            | where NOT datamodel IN("*", "NULL")
+            | rename count AS "Number of Distinct Queries"
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="form.im_datamodel">if(NOT match('click.value', "^other"), 'click.value', 'im_datamodel')</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <h3 class="pie_underlabel">Datamodels</h3>
+      </html>
+    </panel>
+    <panel depends="$ic_show_pies$">
+      <chart>
+        <search base="filtered_snippets">
+          <query>
+            | stats dc(query-hash) AS count by index
+            | where NOT index IN("*", "NULL")
+            | rename count AS "Number of Distinct Queries"
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="form.im_index">if(NOT match('click.value', "^other"), 'click.value', 'im_index')</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <h3 class="pie_underlabel">Indexes</h3>
+      </html>
+    </panel>
+    <panel depends="$ic_show_pies$">
+      <chart>
+        <search base="filtered_snippets">
+          <query>
+            | stats dc(query-hash) AS count by sourcetype
+            | where NOT sourcetype IN("*", "NULL")
+          </query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="form.im_sourcetype">if(NOT match('click.value', "^other"), 'click.value', 'im_sourcetype')</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <h3 class="pie_underlabel">Sourcetypes</h3>
+      </html>
+    </panel>
+  </row>
+  <row id="second_filters" depends="$show_more_filters$">
+    <panel>
+      <title>Additional Filters</title>
+      <input type="multiselect" token="im_group" searchWhenChanged="true" id="im_group" depends="$dataset_group$">
+        <label>Group</label>
+        <choice value="*">All</choice>
+        <prefix>group IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>group</fieldForValue>
+        <search base="filtered_snippets">
+          <query>| fillnull value="*" group
+              | stats dc(query-hash) AS dc by group
+              | where NOT group IN("*", "NULL")</query>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="multiselect" token="im_category" searchWhenChanged="true" id="im_category">
+        <label>Category</label>
+        <choice value="*">All</choice>
+        <prefix>category IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>category</fieldForValue>
+        <search base="filtered_snippets">
+          <query>| fillnull value="*" category
+              | stats dc(query-hash) AS dc by category
+              | where NOT category IN("*", "NULL")</query>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="multiselect" token="im_subcategory" searchWhenChanged="true" id="im_subcategory">
+        <label>Subcategory</label>
+        <choice value="*">All</choice>
+        <prefix>subcategory IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>subcategory</fieldForValue>
+        <search base="filtered_snippets">
+          <query>| fillnull value="*" subcategory
+              | stats dc(query-hash) AS dc by subcategory
+              | where NOT subcategory IN("*", "NULL")</query>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="multiselect" token="im_datamodel" searchWhenChanged="true" id="im_datamodel">
+        <label>Datamodel</label>
+        <choice value="*">All</choice>
+        <prefix>datamodel IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>datamodel</fieldForValue>
+        <search base="filtered_snippets">
+          <query>| fillnull value="*" datamodel
+              | stats dc(query-hash) AS dc by datamodel
+              | where NOT datamodel IN("*", "NULL")</query>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="multiselect" token="im_index" searchWhenChanged="true" id="im_index">
+        <label>Index</label>
+        <choice value="*">All</choice>
+        <prefix>index IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>index</fieldForValue>
+        <search base="parsed_snippets">
+          <query>| stats c by all-value-index-resolved
+              | where 'all-value-index-resolved'!="*"
+        | rename all-value-index-resolved AS index
+        | append 
+            [| rest splunk_server=local 
+                  /servicesNS/-/-/data/indexes f=title
+            | rename title AS index
+            | fields index
+            | eval c = 0
+              ]
+        | stats sum(c) AS c by index 
+          | where NOT match(index, "^(_|NULL)")</query>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="multiselect" token="im_sourcetype" searchWhenChanged="true" id="im_sourcetype">
+        <label>Sourcetype</label>
+        <choice value="*">All</choice>
+        <prefix>sourcetype IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <allowCustomValues>true</allowCustomValues>
+        <fieldForLabel>label</fieldForLabel>
+        <fieldForValue>sourcetype</fieldForValue>
+        <search base="filtered_snippets">
+          <query>| fillnull value="*" sourcetype
+              | stats dc(query-hash) AS dc by sourcetype
+              | where NOT sourcetype IN("*", "NULL")</query>
+        </search>
+        <default>*</default>
+      </input>
+    </panel>
+  </row>
+  <row id="results">
+    <panel id="data_sources" depends="$show_data_sources$">
+      <input type="checkbox" token="ic_ds_groupby" searchWhenChanged="true" id="ic_ds_groupby">
+        <label>Group By</label>
+        <choice value="group">Group</choice>
+        <choice value="category">Category</choice>
+        <choice value="subcategory">Subcategory</choice>
+        <choice value="datamodel">Datamodel</choice>
+        <choice value="index">Index</choice>
+        <choice value="sourcetype">Sourcetype</choice>
+        <change>
+          <set token="ds_agg_fields">group;category;subcategory;datamodel;index;sourcetype</set>
+          <eval token="ds_full_stats">replace(replace(";".'ds_agg_fields', "(?:;)(".replace('ic_ds_groupby', ",", "|").")", ""), ";([^;]+)(?=;|$)", "values($1) AS $1 ")." dc(query) AS query_count by ".'ic_ds_groupby'</eval>
+        </change>
+        <default>category,subcategory</default>
+        <delimiter>,</delimiter>
+        <initialValue>category,subcategory</initialValue>
+      </input>
+      <input type="multiselect" token="im_ds_fields" id="im_ds_fields">
+        <label>Fields</label>
+        <choice value="group">Group</choice>
+        <choice value="category">Category</choice>
+        <choice value="subcategory">Subcategory</choice>
+        <choice value="datamodel">Datamodel</choice>
+        <choice value="index">Index</choice>
+        <choice value="sourcetype">Sourcetype</choice>
+        <choice value="query_count">Query Count</choice>
+        <delimiter>,</delimiter>
+        <default>group,category,subcategory,datamodel,index,sourcetype,query_count</default>
+      </input>
+      <html depends="$__CSS__$">
+        <style>
+            #data_sources-fieldset:before 
+            {
+                content: "Data Sources";
+                margin-top: 10px;
+                margin-bottom: 15px;
+                font-size: 1.5em;
+            }
+            
+            div#ic_ds_groupby, 
+            div#il_wrapping, 
+            div#im_query_fields,
+            div#im_ds_fields
+            {
+                margin-top: 10px !important;
+                margin-bottom: 0 !important;
+            }
+
+
+            div#ic_ds_groupby div[data-view="splunkjs/mvc/checkboxgroupview"] 
+            {
+                display: inline-flex !important;
+                flex-direction: row !important;
+                column-gap: 1.5em !important;
+            }
+            
+            div#ic_ds_groupby div[data-component="splunk-core:/splunkjs/mvc/components/CheckboxGroup"]
+            {
+                display: inline-flex !important;
+                flex-direction: row !important;
+                column-gap: 1.5em !important;
+            }
+            
+            #im_ds_fields div[data-view="splunkjs/mvc/multidropdownview"]
+            {
+                width: 750px !important;
+                margin-right: auto !important;
+            }
+             
+            #im_ds_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+            {
+                width: 750px !important;
+            }
+  
+            
+            #data_sources button[data-selected="true"] {
+                background: #8A543A;
+            }
+        </style>
+      </html>
+      <table>
+        <search base="filtered_snippets">
+          <query>
+            | fields group, category, subcategory, datamodel, index, sourcetype, query
+            | stats $ds_full_stats$
+            | foreach group, category, subcategory, datamodel, index, sourcetype, query
+                [| eval &lt;&lt;FIELD&gt;&gt; = mvmap('&lt;&lt;FIELD&gt;&gt;', nullif('&lt;&lt;FIELD&gt;&gt;', "NULL"))
+                    ]
+            | fields $im_ds_fields$
+            
+            
+            | appendpipe
+                [ | eval trailer = 0
+                | foreach $ic_ds_groupby$
+                    [ | eval trailer = if(isNull('&lt;&lt;FIELD&gt;&gt;'), trailer+1, trailer)
+                        ]
+                | where trailer &gt; 0
+                | foreach $ic_ds_groupby$
+                    [| eval &lt;&lt;FIELD&gt;&gt; = coalesce('&lt;&lt;FIELD&gt;&gt;', "zNULL:".trailer)
+                        ]
+                | sort trailer,$ic_ds_groupby$
+                | foreach $ic_ds_groupby$
+                    [| eval &lt;&lt;FIELD&gt;&gt; = case('&lt;&lt;FIELD&gt;&gt;'!="zNULL:".trailer, '&lt;&lt;FIELD&gt;&gt;')
+                        ]
+                ]
+                
+            | foreach $ic_ds_groupby$
+                [| where (isNull(trailer) AND isNotNull('&lt;&lt;FIELD&gt;&gt;'))
+                    OR isNotNull(trailer)
+                    ]
+            | fields - trailer
+            
+            | rename group AS Group, index AS Index, sourcetype AS Sourcetype, datamodel AS Datamodel, category AS Category, subcategory AS Subcategory, query_count AS "Number of Distinct Queries"
+            </query>
+        </search>
+        <option name="drilldown">row</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="color" field="category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Category">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Datamodel">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <drilldown>
+          <eval token="show_queries">if(isNull('selected-value') OR 'click.value2'!='selected-value' OR isNull('click.value2'), 1, NULL)</eval>
+          <unset token="selected-field"></unset>
+          <unset token="selected-value"></unset>
+          <set token="selected-field">$click.name2$</set>
+          <set token="selected-value">$click.value2$</set>
+          <set token="row-Category">$row.Category$</set>
+          <set token="row-Subcategory">$row.Subcategory$</set>
+          <eval token="selected-field-lowered">lower($click.name2$)</eval>
+          <eval token="selected-group">if(isNotNull('row.Group'), "group IN(\"".mvjoin('row.Group', "\", \"")."\")", "")</eval>
+          <eval token="selected-category">if(isNotNull('row.Category'), "category IN(\"".mvjoin('row.Category', "\", \"")."\")", "")</eval>
+          <eval token="selected-subcategory">if(isNotNull('row.Subcategory'), "subcategory IN(\"".mvjoin('row.Subcategory', "\", \"")."\")", "")</eval>
+          <eval token="selected-datamodel">if(isNotNull('row.Datamodel'), "datamodel IN(\"".mvjoin('row.Datamodel', "\", \"")."\")", "")</eval>
+          <eval token="selected-index">if(isNotNull('row.Index'), "index IN(\"".mvjoin('row.Index', "\", \"")."\")", "")</eval>
+          <eval token="selected-sourcetype">if(isNotNull('row.Sourcetype'), "sourcetype IN(\"".mvjoin('row.Sourcetype', "\", \"")."\")", "")</eval>
+          <eval token="filter_labels-visibility-group">if(isNotNull('dataset_group') AND 'selected-group' != "", "", "filter_labels-hide")</eval>
+          <eval token="filter_labels-visibility-category">if('selected-category' != "", "", "filter_labels-hide")</eval>
+          <eval token="filter_labels-visibility-subcategory">if('selected-subcategory' != "", "", "filter_labels-hide")</eval>
+          <eval token="filter_labels-visibility-datamodel">if('selected-datamodel' != "", "", "filter_labels-hide")</eval>
+          <eval token="filter_labels-visibility-index">if('selected-index' != "", "", "filter_labels-hide")</eval>
+          <eval token="filter_labels-visibility-sourcetype">if('selected-sourcetype' != "", "", "filter_labels-hide")</eval>
+          <eval token="selected-group-label">if(isNotNull('row.Group'), "\"".mvjoin('row.Group', "\", \"")."\"", "")</eval>
+          <eval token="selected-category-label">if(isNotNull('row.Category'), "\"".mvjoin('row.Category', "\", \"")."\"", "")</eval>
+          <eval token="selected-subcategory-label">if(isNotNull('row.Subcategory'), "\"".mvjoin('row.Subcategory', "\", \"")."\"", "")</eval>
+          <eval token="selected-datamodel-label">if(isNotNull('row.Datamodel'), "\"".mvjoin('row.Datamodel', "\", \"")."\"", "")</eval>
+          <eval token="selected-index-label">if(isNotNull('row.Index'), "\"".mvjoin('row.Index', "\", \"")."\"", "")</eval>
+          <eval token="selected-sourcetype-label">if(isNotNull('row.Sourcetype'), "\"".mvjoin('row.Sourcetype', "\", \"")."\"", "")</eval>
+        </drilldown>
+      </table>
+    </panel>
+    <panel id="queries" depends="$show_queries$">
+      <input type="link" token="il_wrapping" searchWhenChanged="true" id="il_wrapping">
+        <label>Line Wrapping</label>
+        <choice value="query">Query Only</choice>
+        <choice value="all">Wrap All</choice>
+        <choice value="none">Disable</choice>
+        <default>query</default>
+        <initialValue>query</initialValue>
+        <change>
+          <condition value="query">
+            <set token="query_wrap">1</set>
+            <set token="query_wrap_xml">false</set>
+          </condition>
+          <condition value="none">
+            <set token="query_wrap">0</set>
+            <set token="query_wrap_xml">false</set>
+          </condition>
+          <condition value="all">
+            <set token="query_wrap">0</set>
+            <set token="query_wrap_xml">true</set>
+          </condition>
+        </change>
+      </input>
+      <input type="multiselect" token="im_query_fields" searchWhenChanged="true" id="im_query_fields">
+        <label>Fields</label>
+        <choice value="Context">Context</choice>
+        <choice value="Query">Query</choice>
+        <choice value="Category">Category</choice>
+        <choice value="Subcategory">Subcategory</choice>
+        <choice value="Index">Index</choice>
+        <choice value="Sourcetype">Sourcetype</choice>
+        <choice value="Datamodel">Datamodel</choice>
+        <choice value="Group">Group</choice>
+        <choice value="&quot;Query Notes&quot;">Query Notes</choice>
+        <choice value="&quot;Coverage Notes&quot;">Coverage Notes</choice>
+        <default>Context,Query</default>
+        <delimiter> </delimiter>
+      </input>
+      <input type="link" token="il_query_close" searchWhenChanged="true" id="il_query_close">
+        <label></label>
+        <choice value="1">✖</choice>
+        <change>
+          <condition>
+            <unset token="show_queries"></unset>
+            <unset token="il_query_close"></unset>
+            <unset token="form.il_query_close"></unset>
+            <unset token="selected-value"></unset>
+            <set token="show_data_sources">1</set>
+            <unset token="show_query_button-restore"></unset>
+            <set token="show_query_button-maximize">1</set>
+            <unset token="il_query_restore"></unset>
+            <unset token="il_query_maximize"></unset>
+          </condition>
+        </change>
+      </input>
+      <input type="link" token="il_query_restore" searchWhenChanged="true" id="il_query_restore" depends="$show_query_button-restore$">
+        <label></label>
+        <choice value="1">⭲</choice>
+        <change>
+          <condition value="1">
+            <set token="show_data_sources">1</set>
+            <unset token="il_query_restore"></unset>
+            <unset token="form.il_query_restore"></unset>
+            <unset token="show_query_button-restore"></unset>
+            <set token="show_query_button-maximize">1</set>
+          </condition>
+        </change>
+      </input>
+      <input type="link" token="il_query_maximize" searchWhenChanged="true" id="il_query_maximize" depends="$show_query_button-maximize$">
+        <label></label>
+        <choice value="1">⤡</choice>
+        <change>
+          <condition value="1">
+            <unset token="show_data_sources"></unset>
+            <unset token="il_query_maximize"></unset>
+            <unset token="form.il_query_maximize"></unset>
+            <unset token="show_query_button-maximize"></unset>
+            <set token="show_query_button-restore">1</set>
+          </condition>
+        </change>
+      </input>
+      <html>
+        <style>
+          
+          #queries-fieldset:before {
+              content: "Queries";
+              margin-top: 10px;
+              margin-bottom: 15px;
+              font-size: 1.5em;
+          }
+          
+          div#il_query_restore,
+          div#il_query_maximize,
+          div#il_query_close 
+          {
+              float: right;
+              margin: 0;
+          }
+          div#il_query_restore label, 
+          div#il_query_maximize label, 
+          div#il_query_close label 
+          {
+              margin: 0;
+              height: 0;
+          }
+          
+          div#il_query_restore button, 
+          div#il_query_maximize button, 
+          div#il_query_close button 
+          {
+              border: 1px #696969 outset;
+              border-radius: 7px;
+              font-size: 110%;
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+              padding-bottom: 3px !important;
+          }
+
+        
+          #filter_labels {
+              display: flex;
+              flex-flow: row wrap;
+              align-content: flex-start;
+              gap: 10px 20px;
+          }
+          
+          .filter_labels-container {
+              display: flex;
+              flex-flow: column nowrap;
+              align-content: flex-end;
+          }
+          
+          .filter_labels-title {
+              color: #AAAAAB;
+              font-size: 0.9em;
+          }
+          
+          .filter_labels-filter {
+              font-family: monospace;
+              font-size: 1.1em;
+              border-bottom: 1px #8A543A solid;
+              flex-grow: 1;
+              color: #EEEEEE;
+          }
+          
+          .filter_labels-hide {
+              display: none;
+          }
+          
+          #filter_labels-title-main {
+              font-size: 1.2em;
+              color: #EEEEEE;
+          }
+        
+        </style>
+        <body>
+        <span id="filter_labels">
+          <span id="filter_labels-title-main" class="filter_labels-container">Selection: </span>
+          <span class="filter_labels-container $filter_labels-visibility-group$">
+            <span class="filter_labels-filter">$selected-group-label$</span>
+            <span class="filter_labels-title">Group</span>
+          </span>
+          <span class="filter_labels-container $filter_labels-visibility-category$">
+            <span class="filter_labels-filter">$selected-category-label$</span>
+            <span class="filter_labels-title">Category</span>
+          </span>
+          <span class="filter_labels-container $filter_labels-visibility-subcategory$">
+            <span class="filter_labels-filter">$selected-subcategory-label$</span>
+            <span class="filter_labels-title">Subcategory</span>
+          </span>
+          <span class="filter_labels-container $filter_labels-visibility-datamodel$">
+            <span class="filter_labels-filter">$selected-datamodel-label$</span>
+            <span class="filter_labels-title">Datamodel</span>
+          </span>
+          <span class="filter_labels-container $filter_labels-visibility-index$">
+            <span class="filter_labels-filter">$selected-index-label$</span>
+            <span class="filter_labels-title">Index</span>
+          </span>
+          <span class="filter_labels-container $filter_labels-visibility-sourcetype$">
+            <span class="filter_labels-filter">$selected-sourcetype-label$</span>
+            <span class="filter_labels-title">Sourcetype</span>
+          </span>
+        </span>
+      </body>
+      </html>
+      <table>
+        <title>Click row to open query in a new tab</title>
+        <search base="filtered_snippets">
+          <query>| eval 
+    hierarchy:cleaned = mvmap(hierarchy, replace(hierarchy, "\W", "")),
+    context = mvmap(
+        hierarchy, 
+        mvjoin(mvindex('hierarchy:cleaned', 0, mvfind('hierarchy:cleaned', "^".replace(hierarchy, "\W", "")."$")), "_")
+        ."_".mvfind('hierarchy:cleaned', "^".replace(hierarchy, "\W", "")."$")
+        ."&gt;".hierarchy
+        )
+| fields - hierarchy:cleaned
+| stats values(*) AS * by query-hash
+| eval context = mvmap(context, replace(context, "^\w+&gt;", ""))
+| foreach query, category, subcategory, index, sourcetype, datamodel, query-notes, coverage-notes
+    [| rex mode=sed field=&lt;&lt;FIELD&gt;&gt; "s/^NULL$//g"
+        ]
+| search 
+    $selected-group$
+    $selected-index$
+    $selected-sourcetype$
+    $selected-datamodel$
+    $selected-category$
+    $selected-subcategory$
+            | fields context, query, category, subcategory, index, sourcetype, datamodel, query-notes, coverage-notes, group
+            | eval
+                query-formatted = split(replace(query, "\|", "&lt;__|__&gt;|"), "&lt;__|__&gt;"),
+                query-formatted = split(replace(query, "(.{40}\S*)\s*(?!\|)", "\1&lt;__|__&gt;  "), "&lt;__|__&gt;"),
+                query = if($query_wrap$ = 1, 'query-formatted', query)
+            | rename 
+                context AS Context, 
+                query AS Query, 
+                query-notes AS "Query Notes",
+                coverage-notes AS "Coverage Notes",
+                category AS Category, 
+                subcategory AS Subcategory, 
+                index AS Index, 
+                sourcetype AS Sourcetype, 
+                datamodel AS Datamodel
+                group AS Group
+            | fields $im_query_fields$</query>
+        </search>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">$query_wrap_xml$</option>
+        <option name="link.visible">$link_visible$</option>
+        <drilldown>
+          <eval token="reformatted_query">mvjoin('row.Query', " ")</eval>
+          <link target="_blank">search?q=$reformatted_query$&amp;earliest=-h&amp;latest=now</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

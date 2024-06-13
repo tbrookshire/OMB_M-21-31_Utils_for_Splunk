@@ -1,0 +1,568 @@
+<form version="1.1" theme="dark" hideEdit="true" hideExport="true">
+  <label>OMB M-21-31 - Knowledge Object Reference</label>
+  <description>Gives details on the lookups that come with the app and information about their fields.</description>
+  <init>
+    <set token="link_visible">false</set>
+  </init>
+  <fieldset submitButton="false"></fieldset>
+  <row depends="$__CSS__$">
+    <panel>
+      <html>
+      <body>
+        <style>
+            div#commands_row_egs,
+            div#status_lookup_row
+            {
+                margin-bottom: 50px;
+            }
+            
+            #commands_row_args h3,
+            #commands_row_egs h3 
+            {
+                font-size: 1.5em;
+                margin-left: 5%;
+                /* margin-top: 10px; */
+                margin-bottom: 10px;
+            }
+            
+            #commands_row_args h3
+            {
+                padding-top: 0;
+            }
+            
+            #commands_row_egs h3
+            {
+                padding-top: 20px;
+            }
+            
+            #target_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["*"]'])
+            {
+                border: #B69231 1px solid !important;    
+            }
+            
+            
+            #pdf_lookup_output_panel_checkbox div[data-test-selected="true"] button
+            {
+                border: #B69231 1px solid !important;
+            }
+
+            #gil_kos.input-link label
+            {
+                text-align: center !important;   
+            }
+            
+            #p_ko_nav .dashboard-panel
+            {
+                background-color: #171d21;
+            }
+            
+            #gil_kos
+            {
+                margin: 0px;
+                min-width: 100%;
+                width: fit-content !important;
+            }
+            
+            #gil_kos div[data-test="radio-bar"]
+            {
+                display: flex;
+                justify-content: center;
+            }
+            
+            #gil_kos label
+            {
+                font-size: 2em;
+                display: none;
+            }
+            
+            #gil_kos div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"]
+            {
+                gap: 10px;
+            }
+            
+            #gil_kos div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button
+            {
+                margin-left: 0px;
+                margin-right: 0px;
+                border-radius: 5px;
+                min-width: 5em;
+                font-size: 1.5em;
+                padding: 10px;
+                border: 1px #999 outset;
+            }
+            
+            div#gil_kos button[tabindex]
+            {
+                border-style: inset;
+                background-color: #523D75;
+            }
+            
+            .title_prefix {
+              font-size: 140%
+              }
+            .title_label {
+              font-size: 120%;
+              font-weight: bold;
+              }
+              
+            .bullet_title {
+              font-size: 1.5em; 
+              padding-right: 10px;
+              font-weight: bold;
+              }
+            .bullet_title_header {
+              margin-left: 5px;
+            }
+            .bullet_title_label
+            {
+                margin-right: 10px;
+            }
+              
+            code
+            {
+              background-color: #171d21; 
+              border: 0px;
+              color: #d46129;
+              font-size: 90%;
+              font-family: monospace; 
+              width: fit-content;
+              padding: 2px;
+              }
+              
+            #info&gt;li {margin-bottom: 10px}
+            
+            details {
+              margin-bottom: 10px;
+              margin-left: 30px;
+            }
+            details ul li:last-child {
+              margin-bottom: 10px;
+            }
+            .usage_bullet_header {
+              font-weight: bold;
+              font-size: 110%;
+              color: #f8be34;
+            }
+            
+            
+            .section_title {
+              /*
+              margin-top: 10px;
+              margin-bottom: 10px;
+              */
+              width: fit-content;
+              display: inline-block;
+            }
+            .section_title_label {
+              font-size: 2em;
+              margin-left: 20px;
+              margin-right: 20px;
+            }
+            .section_title_border {
+              width: auto;
+              border-color: #555;
+            }
+            
+            .panel-element-row .panel-body {
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+            }
+            
+            
+            #gil_kos .input-link label
+            {
+                justify-content: center !important;
+            }
+            
+            
+        </style>
+      </body>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="p_ko_nav">
+      <input type="link" token="gil_kos" id="gil_kos" searchWhenChanged="true">
+        <label>Knowledge Objects</label>
+        <choice value="all">All</choice>
+        <choice value="commands">Commands</choice>
+        <choice value="lookups">Lookups</choice>
+        <choice value="macros">Macros</choice>
+        <default>lookups</default>
+        <change>
+          <condition>
+            <eval token="show_commands">if('value'=="commands" OR 'value'=="all", "| noop", NULL)</eval>
+            <eval token="show_dashboards">if('value'=="dashboards" OR 'value'=="all", "| noop", NULL)</eval>
+            <eval token="show_lookups">if('value'=="lookups" OR 'value'=="all", "| noop", NULL)</eval>
+            <eval token="show_macros">if('value'=="macros" OR 'value'=="all", "| noop", NULL)</eval>
+          </condition>
+        </change>
+      </input>
+    </panel>
+  </row>
+  <row id="commands_row_args" depends="$show_commands$">
+    <panel>
+      <html>
+        <body>
+          <span class="section_title">
+            <hr class="section_title_border"/>
+            <p class="section_title_label">Command: <code>m2131genstatus</code>
+            </p>
+            <hr class="section_title_border"/>
+          </span>
+        </body>
+      </html>
+      <table>
+        <title>Arguments:</title>
+        <search>
+          <query>
+            | rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/configs/conf-searchbnf
+                [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+| fields title, description, arg.*, example*, comment*
+| fields - *test*
+| fields title, arg.*
+| untable title, col, val
+| fromjson val
+| rex mode=sed field=col "s/^arg\.//"
+| fields - title, val
+| fields col, required, allowed_values, default_value, description, *
+| rename col AS Argument, required AS Required, allowed_values AS "Allowed Values", default_value AS "Default Value", description AS Description</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row id="commands_row_egs" depends="$show_commands$">
+    <panel>
+      <table>
+        <title>Examples:</title>
+        <search>
+          <query>
+            | rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/configs/conf-searchbnf
+                [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+| fields title, description, arg.*, example*, comment*
+| fields title, example*, comment*
+| untable title, col, val
+| rex field=col "(?&lt;id&gt;\d+$)"
+| rex mode=sed field=col "s/\d+$//"
+| fields id, col, val
+| xyseries id, col, val
+| fromjson comment
+| fields example, description
+| rename example AS Example, description AS Description</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$show_lookups$" id="r_filters_lookups">
+    <panel>
+      <input type="multiselect" token="target_fields" id="target_fields" searchWhenChanged="true">
+        <label>Field Filter</label>
+        <choice value="*">All</choice>
+        <prefix>field IN(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>, </delimiter>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search>
+          <query>| inputlookup `omb-m2131-status`
+| `omb-m2131-link_to_status`
+| fieldsummary maxvals=1
+| fields field</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <allowCustomValues>true</allowCustomValues>
+        <default>*</default>
+      </input>
+      <input type="checkbox" token="ic_toggle_pdf_samples" id="pdf_lookup_output_panel_checkbox" depends="$show_lookups$">
+        <label>Show Sample Value Stats</label>
+        <choice value="1">OMB M-21-31 PDF Lookup</choice>
+        <change>
+          <eval token="pdf_sample_fields">if(isNull($ic_toggle_pdf_samples$), "| fields - num_records_where_field_has_data, sample_*", "| noop")</eval>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+    </panel>
+  </row>
+  <row id="pdf_lookup_row" depends="$show_lookups$">
+    <panel depends="$__HIDE__$">
+      <table>
+        <search>
+          <query>
+            | inputlookup `omb-m2131`
+            | head 1
+            | fields m2131_lookup_version*, m2131_lookup_last_updated*, 
+          </query>
+          <progress>
+            <set token="m2131_lookup_version"></set>
+          </progress>
+          <done>
+            <set token="m2131_lookup_version">$result.m2131_lookup_version$</set>
+            <set token="m2131_lookup_version-prev">$result.m2131_lookup_version-prev$</set>
+            <set token="m2131_lookup_last_updated">$result.m2131_lookup_last_updated$</set>
+            <set token="m2131_lookup_last_updated-epoch">$result.m2131_lookup_last_updated-epoch$</set>
+          </done>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+    <panel id="pdf_lookup_output_panel">
+      <html>
+        <body>
+          <span class="section_title">
+            <hr class="section_title_border"/>
+            <p class="section_title_label">Lookup: <code>omb-m2131</code>
+            </p>
+            <hr class="section_title_border"/>
+          </span>
+          <details>
+            <summary>
+              <span class="bullet_title">
+                  <span class="bullet_title_header">Details: </span>
+                </span>
+            </summary>
+            <ul id="info">
+              <li>
+                <span class="usage_bullet_header">Description: </span>This includes all checks extracted from the OMB M-21-31 PDF and converted into a format that can be used for analytics.
+              </li>
+              <li>
+                <span class="usage_bullet_header">Current Version: </span>
+                <code>$m2131_lookup_version$</code>
+              </li>
+              <li>
+                <span class="usage_bullet_header">Previous Version: </span>
+                <code>$m2131_lookup_version-prev$</code>
+              </li>
+              <li>
+                <span class="usage_bullet_header">Last Updated: </span>
+                <code>$m2131_lookup_last_updated$</code>
+              </li>
+              <li>
+                <span class="usage_bullet_header">Aliases: </span>
+                <ul>
+                  <li>
+                    <span class="usage_bullet_header">Lookup Definition(s): </span>
+                    <ul>
+                      <li>
+                        <code>m2131</code>: Points to the same lookup file. It's just less to type.</li>
+                    </ul>
+                  </li>  
+                  <li>
+                    <span class="usage_bullet_header">Macro(s): </span>
+                    <ul>
+                      <li>
+                        <span class="usage_bullet_header">
+                          <code>`omb-m2131`</code>:</span> Contains a direct reference to the lookup definition <code>omb-m2131</code>.
+                      </li>
+                      <li>
+                        <span class="usage_bullet_header">
+                          <code>`m2131`</code>:</span> Contains an <i>indirect</i> reference to the lookup definition <code>omb-m2131</code>, by resolving directly to the macro <code>`omb-m2131`</code>. Available for consistency and because I got tired of typing "omb-".</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <span class="usage_bullet_header">Notes: </span>
+                  <ol>
+                    <li>This lookup should <strong>not</strong> be updated. However, IF one is so inclined, then please do the following:
+                      <ol>
+                        <li>Clone the lookup file being referenced by the lookup definition <code>omb-m2131</code>.</li>
+                        <li>Create a new lookup definition and point it to the cloned lookup file.</li>
+                        <li>Update the macro <code>`omb-m2131`</code> to reference the new lookup definition.</li>
+                        <li>Update permissions as needed.</li>
+                      </ol>
+                    </li>
+                  </ol>
+              </li>
+            </ul>
+          </details>
+        </body>
+      </html>
+      <table id="pdf_lookup_output_panel_table">
+        <search>
+          <query>| inputlookup `omb-m2131`
+| foreach * 
+    [| eval &lt;&lt;FIELD&gt;&gt; = mvjoin('&lt;&lt;FIELD&gt;&gt;', ", ")
+        ] 
+| fieldsummary maxvals=3 
+| search $target_fields$
+| fields field, count, values 
+| eval
+    val=json_extract(values, "{}.value"),
+    val=if(json_valid(val) AND match(val, "^\["), json_array_to_mv(val), val),
+    c=json_extract(values, "{}.count"),
+    c=if(json_valid(c) AND match(c, "^\["), json_array_to_mv(c), c) 
+| fields - values 
+| rename val AS sample_values, c AS sample_value_counts, count AS num_records_where_field_has_data 
+| join type=left field 
+    [| `z__omb-m2131-schema`
+        ] 
+| where NOT match(field, "-spreadsheet$")
+| fields field, num_records_where_field_has_data, sample_*, description, notes $pdf_sample_fields$
+| rename field AS Field, num_records_where_field_has_data AS "Number of Records in Lookup Where the Field Has Data", sample_values AS "Sample Values", sample_value_counts AS "Sample Value Counts", description AS Description, notes AS Notes
+| fields Field, Number*, Sample*, Description, Notes
+| fields - Notes</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">$link_visible$</option>
+      </table>
+    </panel>
+  </row>
+  <row id="status_lookup_row" depends="$show_lookups$">
+    <panel>
+      <html>
+        <body>
+          <span class="section_title">
+            <hr class="section_title_border"/>
+            <p class="section_title_label">Lookup: <code>omb-m2131-status</code>
+            </p>
+            <hr class="section_title_border"/>
+          </span>
+          <details>
+          <summary>
+            <span class="bullet_title">
+                <span class="bullet_title_header">Details: </span>
+              </span>
+          </summary>
+          <span class="info">
+            <ul>
+              <li>
+                <span class="usage_bullet_header">Description: </span>
+                This includes the organization's status regarding all checks and is the only one that should be updated by the organization, since it directly affects dashboard results.
+              </li>
+              <li>
+                <span class="usage_bullet_header">Aliases: </span>
+                <ul>
+                  <li>
+                    <span class="usage_bullet_header">Lookup Definition(s): </span>
+                    <ul>
+                      <li>
+                        <span class="usage_bullet_header">
+                          <code>m2131-status</code>:</span> Points to the same lookup file. It's just less to type.</li>
+                    </ul>
+                  </li>  
+                  <li>
+                    <span class="usage_bullet_header">Macro(s):</span>
+                    <ul>
+                      <li>
+                        <span class="usage_bullet_header">
+                          <code>`omb-m2131-status`</code>:</span> Contains a direct reference to the lookup definition <code>omb-m2131-status</code>.
+                      </li>
+                      <li>
+                        <span class="usage_bullet_header">
+                          <code>`m2131-status`</code>:</span> Contains an <i>indirect</i> reference to the lookup definition <code>omb-m2131-status</code>, by resolving directly to the macro <code>`omb-m2131-status`</code>. Available for consistency and because I got tired of typing "omb-".</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </span>
+          </details>
+        </body>
+      </html>
+      <table>
+        <search>
+          <query>| makeresults 
+          ```This references the macro's contents since the lookup may not exist when this is viewed.```
+          | eval [| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/admin/macros/omb-m2131-status-fields
+                    [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                    | fields definition 
+                    | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                    | return search
+                        ] 
+                | fields definition 
+                | return field=$definition
+                    ],
+                field = split(replace(field, "\s+", ""), ",")
+          | mvexpand field
+          | fields - _time
+| search $target_fields$
+| join type=left field 
+    [| `z__omb-m2131-status-schema`
+        ]
+| fillnull value=No can_be_null
+| fillnull value="&lt;DO NOT MODIFY&gt;" allowed_values
+| rename field AS Field, num_records_where_field_has_data AS "Number of Records in Lookup Where the Field Has Data", sample_values AS "Sample Values", sample_value_counts AS "Sample Value Counts", allowed_values AS "Allowed Values", can_be_null AS "Can Be Null", default_value AS "Default Value When Null", description AS Description, notes AS Notes
+| fields Field, Number*, Sample*, Allowed*, Can*, Default*, Description, Notes, *</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Notes">
+          <colorPalette type="map">{"DO NOT MODIFY":#9E2520}</colorPalette>
+        </format>
+        <format type="color" field="Default Value When Null">
+          <colorPalette type="map">{"Yes":#3F5590,"No":#B1560A,"Unknown":#908600}</colorPalette>
+        </format>
+        <format type="color" field="Allowed Values">
+          <colorPalette type="map">{"Yes, Y, No, N, Unknown, ?":#3F5590,"Yes, Y, No, N, N/A, NA, Unknown, ?":#908600,"Yes, Y, No, N, Partial, P, N/A, NA, Unknown, ?":#B1560A,"&lt;DO NOT MODIFY&gt;":#822121}</colorPalette>
+        </format>
+        <format type="color" field="Can Be Null">
+          <colorPalette type="map">{"No":#822121}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row id="macros_row" depends="$show_macros$">
+    <panel>
+      <html>
+        <body>
+          <span class="section_title">
+            <hr class="section_title_border"/>
+            <p class="section_title_label">Macros:</p>
+            <hr class="section_title_border"/>
+          </span>
+        </body>
+      </html>
+      <table>
+        <search>
+          <query>| `z__omb-m2131-macros-schema`
+| sort macro
+| eval 
+    macro = "`".macro."`",
+    alias = if(alias!="N/A", "`".alias."`", alias)
+| rename macro AS Macro, alias AS Alias, example AS Example, description AS Description
+| fields Macro, Alias, Example Description</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">cell</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=$row.Example$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,545 @@
+<form version="1.1" theme="dark" hideExport="true" hideEdit="true">
+  <label>OMB M-21-31 - Getting Started</label>
+  <description>Helps guide the Splunk administrator on creating the lookup(s) needed for tracking OMB M-21-31 compliance progress with this app</description>
+  <row depends="$__hidden__$">
+    <panel>
+      <table>
+        <title>Base Search: init</title>
+        <search id="init">
+          <!--Too many issues with using the actual "init" element, so I'm using my own-->
+          <query>| rest splunk_server=local /services/authentication/current-context
+            | eval 
+                capabilities = mvfilter(match(capabilities, "^omb_m2131_create_status_lookup$")),
+                app_namespace = `z__omb-m2131-app_namespace`
+            | where isNotNull(capabilities)
+            | fields capabilities, app_namespace</query>
+          <progress>
+            <set token="show_auth_check">1</set>
+            <unset token="show_sologroup"></unset>
+            <set token="view_sologroup">none</set>
+            <unset token="show_multigroup"></unset>
+            <set token="view_multigroup">none</set>
+            <unset token="multigroup_show_create"></unset>
+            <unset token="show_error_msg"></unset>
+            <set token="initial_load">1</set>
+            <unset token="form.it_multigroup_group_label"></unset>
+            <unset token="it_multigroup_group_label"></unset>
+            <unset token="create_status"></unset>
+            <unset token="arg_group"></unset>
+            <unset token="show_unauth"></unset>
+          </progress>
+        </search>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <!--This is dumb, but I have to do it this way to prevent the race condition that happens between the "progress" and "done" elements.-->
+        <title>Base Search: init2</title>
+        <search id="init2" base="init">
+          <query>| where TRUE()=TRUE()</query>
+          <done>
+            <unset token="show_auth_check"></unset>
+            <set token="app_namespace">$result.app_namespace$</set>
+            <eval token="show_unauth">if('job.resultCount'&gt;0, NULL, "| noop")</eval>
+            <eval token="show_q1">if('job.resultCount'&gt;0, "| noop", NULL)</eval>
+          </done>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row depends="$show_auth_check$" id="r_auth_check">
+    <panel>
+      <html>
+        <body id="b_auth_check">
+          <div id="auth_check_msg">Checking access...</div>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row depends="$show_unauth$" id="r_unauth">
+    <panel>
+      <html>
+        <body id="b_unauth">
+          <div id="unauth_msg"><div id="unauth_label">UNAUTHORIZED</div><div id="unauth_details">Your account is missing the <code>omb_m2131_create_status_lookup</code> capability. This capability is required in order to run the <code>m2131genstatus</code> command.</div><span id="unauth_footer">If this is needed, then please have the Splunk administrator update your access accordingly.</span></div>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row id="gs_q_solo_or_multi_row" depends="$show_q1$">
+    <panel id="gs_q_solo_or_multi_panel">
+      <html>
+        <style>
+          #auth_check_msg
+          {
+              text-align: center;
+              font-size: 1.3em;
+          }
+          #unauth_msg
+          {
+              text-align: center;
+          }
+          
+          #unauth_label
+          {
+              font-size: 1.75em;
+              color: darkred;
+              font-weight: bold;
+              margin-top: 10px;
+              margin-bottom: 20px;
+          }
+          
+          #unauth_details
+          {
+              font-size: 1.2em;
+          }
+          code
+          {
+            background-color: #171d21; 
+            border: 0px;
+            color: #d46129;
+            font-size: 90%;
+            font-family: monospace; 
+            width: fit-content;
+            padding: 2px;
+          }
+          
+          p.gs_question {
+            font-size: 2em !important;
+            text-align: center
+          }
+          
+          p.gs_question .gs_question_note {
+            font-size: .5em !important;
+            font-style: italic;
+          }
+
+          div[data-view="views/dashboard/layout/row_column/RowColumnLayout"]
+          {
+              display: flex !important;
+              flex-flow: column nowrap !important;
+              align-items: center !important;
+          }
+          
+          .dashboard-row
+          {
+              min-width: 10% !important;
+              width: 50% !important;
+          }
+          
+          #debug.dashboard-row { width: 100% !important; }
+          
+          #gs_q_solo_or_multi_row,
+          #gs_q_solo_or_multi_panel,
+          #gs_multigroup_q_name_of_group_row,
+          #multigroup_group_label_row
+          {
+              width: auto !important;
+          }
+          
+          #gs_q_solo_or_multi_panel div,
+          #gs_multigroup_q_name_of_group_panel div,
+          #multigroup_group_label_panel div
+          {
+              background-color: #171d21 !important;
+              padding-bottom: 0px !important;
+          }
+          
+          #gs_q_solo_or_multi_row
+          {
+              margin-top: 30px !important;
+          }
+          
+          div#gs_a_solo_or_multi_panel .panel-element-row 
+          {
+              display: flex !important;
+              flex-flow: row nowrap;
+              gap: 20px;
+              background-color: #171d21 !important;
+              justify-content: center;
+          }
+          
+          div#gs_a_solo_or_multi_panel .panel-element-row text
+          {
+              font-size: 2.1em !important;
+          }
+          
+          
+          div#gs_a_solo_or_multi_panel .panel-element-row .single
+          {
+              width: auto !important;
+              background-color: #212527 !important;
+          }
+          
+          .panel-element-row .single svg.svg-container {
+              border: 1px #999 outset;
+          }
+          
+          .panel-element-row .single svg.svg-container rect {
+              fill: #523D75 !important;
+          }
+          
+          
+          #gs_multigroup_q_name_of_group_row
+          {
+              margin-top: 20px !important;
+          }
+          
+          #multigroup_group_label_panel-fieldset
+          {
+              padding-top: 0px !important;
+          }
+          
+          p.gs_question
+          {
+              margin-top: 10px !important;
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+          }
+          
+          
+          #gs_it_group_label
+          {
+              width: 100% !important;
+              max-width: 500px !important;
+              margin-left: 0px !important;
+              margin-right: 0px !important;
+          }
+          
+          
+          #multigroup_group_label_row
+          {
+              min-width: 500px !important;
+          }
+          
+          
+          #multigroup_group_label_panel .panel-element-row
+          {
+              text-align: center !important;
+          }
+          
+          
+          .gs_question_note
+          {
+              color: #999 !important;
+          }
+          
+          #gs_it_group_label [id^="gs_it_group_label_"]
+          {
+              display: block;
+              width: auto;
+              text-align: center;
+              min-height: 1.5em;
+          }
+          
+          #specified_group_label_displayed {
+            font-size: 1.5em;
+            font-style: italic;
+          }
+          
+          #multigroup_create_button_panel,
+          #sologroup_create_button_panel
+          {
+              max-width: 500px;    
+          }
+          
+          #multigroup_create_button_row,
+          #sologroup_create_button_row
+          {
+              display: flex;
+              flex-flow: row nowrap;
+              justify-content: center !important;
+              align-items: center !important;
+              align-content: center !important;
+          }
+          
+          .splunk-textinput
+          {
+            margin-bottom: 5px !important;
+          }
+          
+          #result_fail_word
+          {
+            text-align: center !important;
+          }
+          
+          #result_fail_word
+          {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: red;
+          }
+          
+          #result_success_word
+          {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: green;
+          }
+          
+          #result_success_msg,
+          #result_loading_msg,
+          #result_fail_msg
+          {
+            text-align: center !important;
+          }
+          
+          span#result_success_msg div,
+          span#result_loading_msg div,
+          span#result_fail_msg div
+          {
+              font-size: 1.2em;
+          }
+          
+          span#result_success_msg div:first-child,
+          span#result_fail_msg div:first-child
+          {
+              font-size: 1.5em;
+          }
+          
+          span#result_success_msg div:nth-child(2),
+          span#result_fail_msg div:nth-child(2)
+          {
+              padding-top: 10px;
+          }
+          span#result_success_msg div:nth-child(3),
+          span#result_success_msg div:nth-child(4),
+          span#result_fail_msg div:nth-child(3),
+          span#result_fail_msg div:nth-child(4)
+          {
+              font-size: 1em;
+          }
+          
+          span#result_success_msg div:nth-child(5),
+          span#result_fail_msg div:nth-child(5)
+          {
+              font-size: 1.5em;
+              padding-top: 10px;
+          }
+          
+          span#result_success_msg div:nth-child(6)
+          {
+              font-style: italic;
+              padding-top: 10px;
+          }
+          
+          span#result_success_msg div:nth-child(7)
+          {
+              font-style: italic;
+              padding-top: 10px;
+              font-size: 1em;
+          }
+          
+        </style>
+        <body>
+          <p class="gs_question">Do you need to track compliance separately for multiple groups?</p>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row id="gs_a_solo_or_multi_row" depends="$show_q1$">
+    <panel id="gs_a_solo_or_multi_panel">
+      <single id="singleWithCSSOverride_Multigroup">
+        <search>
+          <query>| makeresults | eval message="Yes", val=1 | rangemap field=val low=0-100</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_multigroup$</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <unset token="show_result_loading"></unset>
+          <unset token="show_result_success"></unset>
+          <unset token="show_result_fail"></unset>
+          <eval token="show_multigroup">if(isnull($show_multigroup$),"| noop",NULL)</eval>
+          <eval token="view_multigroup">if($view_multigroup$=="block","none","block")</eval>
+          <unset token="show_sologroup"></unset>
+          <set token="view_sologroup">none</set>
+          <unset token="it_multigroup_group_label"></unset>
+          <unset token="form.it_multigroup_group_label"></unset>
+          <set token="show_error">0</set>
+          <unset token="show_error_msg"></unset>
+          <set token="initial_load">1</set>
+          <set token="arg_group"></set>
+          <unset token="create_status"></unset>
+        </drilldown>
+      </single>
+      <single id="singleWithCSSOverride_Sologroup">
+        <search>
+          <query>| makeresults | eval message="No", val=1 | rangemap field=val low=0-100</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_sologroup$</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <unset token="show_result_loading"></unset>
+          <unset token="show_result_success"></unset>
+          <unset token="show_result_fail"></unset>
+          <eval token="show_sologroup">if(isnull($show_sologroup$),"| noop",NULL)</eval>
+          <eval token="view_sologroup">if($view_sologroup$=="block","none","block")</eval>
+          <unset token="show_multigroup"></unset>
+          <unset token="multigroup_show_create"></unset>
+          <set token="view_multigroup">none</set>
+          <unset token="it_multigroup_group_label"></unset>
+          <unset token="form.it_multigroup_group_label"></unset>
+          <set token="show_error">0</set>
+          <set token="arg_group"></set>
+          <unset token="create_status"></unset>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row depends="$show_multigroup$" id="gs_multigroup_q_name_of_group_row">
+    <panel id="gs_multigroup_q_name_of_group_panel">
+      <html>
+        <body>
+          <p class="gs_question">What is the name of the group?<div/>
+            <span class="gs_question_note">This will be displayed at the top of the "Breakdown" dashboard when selected.</span>
+          </p>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row id="multigroup_group_label_row" depends="$show_multigroup$">
+    <panel id="multigroup_group_label_panel">
+      <input type="text" token="it_multigroup_group_label" id="gs_it_group_label">
+        <label>Please enter the group name below:</label>
+        <change>
+          <unset token="show_result_loading"></unset>
+          <unset token="create_status"></unset>
+          <eval token="multigroup_show_create">if(len($it_multigroup_group_label$)&gt;0 AND match($it_multigroup_group_label$, "[a-zA-Z0-9]"), 1, NULL)</eval>
+          <eval token="show_error_msg">if('initial_load'==0 AND isNotNull('it_multigroup_group_label') AND NOT match('it_multigroup_group_label', "([a-zA-Z0-9])"), 1, NULL)</eval>
+          <set token="initial_load">0</set>
+          <eval token="show_error_msg-token">'it_multigroup_group_label'</eval>
+          <eval token="show_error_msg-not_null">if(isNotNull('it_multigroup_group_label'), "true", "false")</eval>
+          <eval token="show_error_msg-not_match">if(NOT match('it_multigroup_group_label', "([a-zA-Z0-9])"), "true", "false")</eval>
+          <eval token="multigroup_group_label_displayed">if(isNull($it_multigroup_group_label$) OR len(trim($it_multigroup_group_label$)) == 0, "", "Group: \"".$it_multigroup_group_label$."\"")</eval>
+          <!--For some reason, the Splunk dashboard Javascript doesn't understand how to parse the dash in this regex correctly, so it'll never be displayed properly.-->
+          <eval token="multigroup_lookup_suffix">if('show_error_msg-not_null' == "true" AND 'show_error_msg-not_match' == "false", replace(lower(trim('it_multigroup_group_label')), "[^0-9a-zA-Z\-]+", "_"), NULL)</eval>
+          <eval token="arg_group">if('show_error_msg-not_null' == "true" AND 'show_error_msg-not_match' == "false", "group=\"".trim('it_multigroup_group_label')."\"", "")</eval>
+          <eval token="lookup_label">"omb-m2131-status".if(isNull('multigroup_lookup_suffix'), "", "-".'multigroup_lookup_suffix')</eval>
+          <set token="macro_all-msg">has been updated to include a reference to the new lookup. If the new lookup is deleted, them make sure the macro is updated or it won't work in any of the dashboards.</set>
+        </change>
+        <default></default>
+      </input>
+      <html>
+        <body>
+          <p> <span id="specified_group_label_displayed">$multigroup_group_label_displayed$</span>
+          </p>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row id="multigroup_create_button_row">
+    <panel id="multigroup_create_button_panel" depends="$multigroup_show_create$">
+      <single id="singleWithCSSOverride_multigroup_create_no_suffix">
+        <search>
+          <query>| makeresults | eval message="Click Here to Create the Lookup File", val=1 | rangemap field=val low=0-100</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_show_multigroup_create_no_suffix$</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <unset token="multigroup_show_create"></unset>
+          <set token="show_result_loading">1</set>
+          <unset token="show_result_success"></unset>
+          <unset token="show_result_fail"></unset>
+          <eval token="show_multigroup_create_no_suffix">if(isnull($show_multigroup_create_no_suffix$),"| noop",NULL)</eval>
+          <eval token="view_multigroup_create_no_suffix">if($view_multigroup_create_no_suffix$=="block","none","block")</eval>
+          <eval token="create_status">time()</eval>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row id="sologroup_create_button_row">
+    <panel id="sologroup_create_button_panel" depends="$show_sologroup$">
+      <single id="singleWithCSSOverride_Sologroup_create">
+        <search>
+          <query>| makeresults | eval message="Click Here to Create the Lookup File", val=1 | rangemap field=val low=0-100</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_sologroup_create$</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <unset token="show_sologroup"></unset>
+          <set token="show_result_loading">1</set>
+          <unset token="show_result_success"></unset>
+          <unset token="show_result_fail"></unset>
+          <eval token="show_sologroup_create">if(isnull($show_sologroup_create$),"| noop",NULL)</eval>
+          <eval token="view_sologroup_create">if($view_sologroup_create$=="block","none","block")</eval>
+          <eval token="create_status">time()</eval>
+          <eval token="lookup_label">"omb-m2131-status".if(isNull('multigroup_lookup_suffix'), "", "-".'multigroup_lookup_suffix')</eval>
+          <set token="macro_all-msg">was not created/updated since a group name was not specified.</set>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_result_loading$">
+      <html>
+        <body>
+          <span id="result_loading_msg"><div>Processing request for:</div><div>Definition = <code>$lookup_label$</code></div><div>File = <code>$lookup_label$.csv</code></div></span>
+        </body>
+      </html>
+    </panel>
+    <panel depends="$show_result_success$">
+      <html>
+        <body>
+          <span id="result_success_msg"><div><span id="result_success_word">SUCCESS</span></div><div>The following lookup was created successfully:</div><div>Definition = <code>$lookup_label$</code></div><div>File = <code>$lookup_label$.csv</code></div><div>Click <a href="$url_lookup_editor$">HERE</a> to begin editing the lookup.</div><div>Next step: <a target="_blank" href="omb_m2131__general_usage#guidance_tracking">Relevancy Assessment</a></div><div id="macro_note">NOTE: The macro <code>omb-m2131-status-all</code> $macro_all-msg$</div></span>
+        </body>
+      </html>
+    </panel>
+    <panel depends="$show_result_fail$">
+      <html>
+        <body>
+          <span id="result_fail_msg"><div id="result_fail_word">FAILED</div><div>Could not create the following lookup:</div><div>Definition = <code>$lookup_label$</code></div><div>File = <code>$lookup_label$.csv</code></div><div>Please verify it does not already exist!</div><div>To create a private version, run the following query: <code>| m2131genstatus private="false" preview="false" $arg_group$</code></div></span>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>m2131genstatus</title>
+      <table>
+        <search>
+          <progress>
+            <unset token="show_result_success"></unset>
+            <unset token="show_result_fail"></unset>
+            <eval token="lookup_label">"omb-m2131-status".if(isNull('multigroup_lookup_suffix'), "", "-".'multigroup_lookup_suffix')</eval>
+          </progress>
+          <done>
+            <set token="lookup_label">$result.object$</set>
+            <eval token="url_lookup_editor">"/app/lookup_editor/lookup_edit?namespace=".'app_namespace'."&amp;lookup=".'lookup_label'.".csv&amp;type=csv&amp;transform=".'lookup_label'</eval>
+            <unset token="show_result_loading"></unset>
+            <eval token="show_result_success">if('job.resultCount'&gt;0, 1, NULL)</eval>
+            <eval token="show_result_fail">if('job.resultCount'==0, 1, NULL)</eval>
+            <unset token="show_sologroup"></unset>
+            <unset token="multigroup_show_create"></unset>
+          </done>
+          <query>| m2131genstatus 
+            private=false
+            preview=false
+            $arg_group$
+            | where $initial_load$ == 0 AND $create_status|s$ == $create_status|s$</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

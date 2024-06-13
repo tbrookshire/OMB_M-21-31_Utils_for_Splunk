@@ -1,0 +1,2193 @@
+<form version="1.1" theme="dark" hideEdit="true" hideExport="true">
+  <!--
+      Notes:
+          + This dashboard was originally created in to use a dataset that is now structured completely differently. 
+            That's why:
+              1) The dashboard currently displays some fields with completely different names than what's in the lookups, and
+              2) The base search (id="base") includes SPL aimed at making the lookup contents compatible 
+      -->
+  <label>OMB M-21-31 - Breakdown</label>
+  <description>Helps organizations track OMB M-21-31 compliance progress at a high level and explore associated data.</description>
+  <init>
+    <set token="t_ell"></set>
+    <set token="t_insplunk"></set>
+    <set token="t_havedata"></set>
+    <set token="t_lc"></set>
+    <set token="show_categories">| noop</set>
+    <set token="view_categories">block</set>
+    <set token="view_gaps">none</set>
+    <set token="view_validation">none</set>
+    <set token="view_stats">none</set>
+    <unset token="show_gaps"></unset>
+    <unset token="show_validation"></unset>
+    <unset token="show_stats"></unset>
+    <set token="categories_check_count"></set>
+    <set token="validation_check_count"></set>
+    <set token="r_lookup">Loading...</set>
+    <set token="demo_mode"></set>
+    <set token="d_filter_sp_checks"></set>
+    <set token="categories_download_label">#categories_download_label{display:none !important;}</set>
+    <set token="gaps_download_label">#gaps_download_label{display:none !important;}</set>
+    <set token="validation_download_label">#validation_download_label{display:none !important;}</set>
+    <set token="sv_subtext_suffix"></set>
+    <set token="show_stats_perc">| noop</set>
+    <set token="link_visible">false</set>
+  </init>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="target_dataset" id="im_dataset">
+      <label>Target Dataset(s)</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>value</fieldForValue>
+      <search base="m2131_status_macros_and_lookups">
+        <query/>
+      </search>
+      <delimiter> ,</delimiter>
+    </input>
+    <input type="dropdown" token="gid_score_base" searchWhenChanged="true" id="gid_score_base">
+      <label>Calculate Overview Scores Based On</label>
+      <choice value="Total:Percent">Overall Status</choice>
+      <choice value="Data:Percent">Data Collection Status</choice>
+      <choice value="Splunk:Percent">Data Availability Status</choice>
+      <default>Total:Percent</default>
+    </input>
+  </fieldset>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Macros and lookups in multiselect</title>
+      <table>
+        <search id="m2131_status_macros_and_lookups">
+          <query>| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/configs/conf-macros
+    search="m2131-status"
+    f=definition 
+    [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+| fields title, definition 
+| where 
+    match(lower(title), "^(?:omb-)?m2131-status-[\w\-\.]+$$")
+    AND match(definition, "^[\w\-\.,\s]+$$")
+    AND NOT match(definition, "[\r\n]")
+    AND NOT match(title, "^(?:omb-)?m2131-status-(fields|schema)")
+| eval
+    type = "Macro",
+    value = definition 
+| sort title 
+| fields type, title, value
+| append 
+    [| rest splunk_server=local /servicesNS/-/`z__omb-m2131-app_namespace`/data/transforms/lookups 
+        f=title
+        search="m2131-status" 
+        [| rest splunk_server=local /servicesNS/-/-/admin/macros/z__omb-m2131-app_namespace 
+                | fields definition 
+                | eval search = "eai:acl.app=".replace(definition, "\"", "")
+                | return search
+                    ]
+    | fields title 
+    | where match(lower(title), "^(?:omb-)?m2131-status")
+    | eval 
+        type = "Lookup",
+        value = title 
+    | fields type, title, value
+    | rex field=title "^(?:omb-)?(?&lt;normalized_name&gt;m2131-status.*$$)"
+    | eventstats 
+        values(title) AS title:all
+        by normalized_name
+    | fields - normalized_name
+    | eval type = if(mvcount('title:all')&gt;1 AND match(title, "^m2131-status"), "Lookup (Alias)", type)
+    | sort type, title
+          ]
+| eval label = "[".type."] - ".title</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+    <panel>
+      <title>$q_dataset_names$</title>
+      <table>
+        <title>Determine which datasets to analyze</title>
+        <search id="get_target_dataset_names">
+          <progress>
+            <condition>
+              <set token="q_dataset_names">$job.search$</set>
+              <unset token="dataset_snippet"></unset>
+              <unset token="dataset_snippet_for_groups"></unset>
+            </condition>
+          </progress>
+          <done>
+            <condition>
+              <set token="dataset_snippet">$result.snippet$</set>
+              <eval token="dataset_snippet_for_groups">$result.snippet_for_groups$</eval>
+            </condition>
+          </done>
+          <query>| makeresults
+            | eval 
+                prefix = "| inputlookup append=true ",
+                suffix_for_groups = "",
+                dataset = split(replace($target_dataset|s$, "\s*,\s*", ","), ",")
+            | mvexpand dataset
+            | eval
+                final_suffix = suffix_for_groups."| eval m2131_status_lookup_name = coalesce(m2131_status_lookup_name, \"".dataset."\"), resolved_group = coalesce(resolved_group, 'coverage-group_label', \"".dataset."\") ", 
+                snippet_for_groups = prefix.dataset.final_suffix,
+                snippet = prefix.dataset.final_suffix
+            | stats 
+                values(snippet_for_groups) AS snippet_for_groups
+                values(snippet) AS snippet
+            | eval snippet_for_groups = mvjoin(snippet_for_groups, "")
+            | eval snippet = mvjoin(snippet, "")</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>590s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+    <panel>
+      <title>$q_dataset_results$</title>
+      <table>
+        <title>Determine which groups to display in the label</title>
+        <search id="target_dataset_results">
+          <progress>
+            <set token="q_dataset_results">$job.search$</set>
+          </progress>
+          <done>
+            <condition match="isNull('result.group')">
+              <unset token="dataset_group"></unset>
+              <unset token="dataset_header"></unset>
+            </condition>
+            <condition>
+              <set token="dataset_group">$result.group$</set>
+              <set token="dataset_header">$result.header$</set>
+            </condition>
+          </done>
+          <query>| makeresults
+            | eval _makeresults = 1
+            
+            $dataset_snippet$
+            | fields coverage-group_label, resolved_group
+            | rename coverage-group_label AS group
+            | where isNull(_makeresults)
+            | search group = *
+            | stats 
+                values(resolved_group) AS resolved_group
+                dc(resolved_group) AS group_count
+            | eval 
+                group = case(NOT (resolved_group IN("omb-m2131-status", "m2131-status") AND group_count == 1), "\"".mvjoin(resolved_group, "\", \"")."\""),
+                header = "Dataset",
+                header = if(group_count&gt;1, header."s", header)</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>filterbase</title>
+      <table>
+        <search base="get_relevant_checks" id="filterbase">
+          <query> | search $t_lc$ $t_ell$ $t_insplunk$ $t_havedata$</query>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+    <panel>
+      <title>processedbase</title>
+      <table>
+        <search base="filterbase" id="processedbase">
+          <query>
+            | eval Memo_ID = 'omb_id-legacy'
+| stats 
+    count(eval(In_Splunk="Data in Splunk")) AS Splunk_Have:sub 
+    count(eval(In_Splunk="Data Not in Splunk")) AS Splunk_Not:sub 
+    count(eval(Data_Collection_Status="Have Data")) AS Data_Have:sub 
+    count(eval(Data_Collection_Status="No Data")) AS Data_Not:sub 
+    count(eval(Data_Collection_Status="Partial Data")) AS Data_Partial:sub 
+    by Event_Logging_Level
+| eventstats
+    sum(Splunk_Have:sub) AS Splunk_Have:all
+    sum(Splunk_Not:sub) AS Splunk_Not:all
+    sum(Data_Have:sub) AS Data_Have:all
+    sum(Data_Not:sub) AS Data_Not:all
+    sum(Data_Partial:sub) AS Data_Partial:all
+| foreach sub, all
+    [| eval
+        Data:Total:&lt;&lt;FIELD&gt;&gt; = 'Data_Have:&lt;&lt;FIELD&gt;&gt;'+'Data_Not:&lt;&lt;FIELD&gt;&gt;'+'Data_Partial:&lt;&lt;FIELD&gt;&gt;',
+        Data:Numerator:&lt;&lt;FIELD&gt;&gt; = 'Data_Have:&lt;&lt;FIELD&gt;&gt;'+('Data_Partial:&lt;&lt;FIELD&gt;&gt;'/2),
+        Data:Percent:&lt;&lt;FIELD&gt;&gt; = floor(('Data:Numerator:&lt;&lt;FIELD&gt;&gt;'/'Data:Total:&lt;&lt;FIELD&gt;&gt;')*100),
+        Splunk:Total:&lt;&lt;FIELD&gt;&gt; = 'Splunk_Have:&lt;&lt;FIELD&gt;&gt;'+'Splunk_Not:&lt;&lt;FIELD&gt;&gt;',
+        Splunk:Numerator:&lt;&lt;FIELD&gt;&gt; = 'Splunk_Have:&lt;&lt;FIELD&gt;&gt;',
+        Splunk:Percent:&lt;&lt;FIELD&gt;&gt; = floor(('Splunk:Numerator:&lt;&lt;FIELD&gt;&gt;'/'Splunk:Total:&lt;&lt;FIELD&gt;&gt;')*100),
+        Total:Percent:&lt;&lt;FIELD&gt;&gt; = floor((('Data:Numerator:&lt;&lt;FIELD&gt;&gt;'+'Splunk:Numerator:&lt;&lt;FIELD&gt;&gt;')/('Data:Total:&lt;&lt;FIELD&gt;&gt;'+'Splunk:Total:&lt;&lt;FIELD&gt;&gt;'))*100)
+        ]
+| rename *:sub AS *
+          </query>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$__hidden__$">
+    <panel>
+      <title>Get all checks</title>
+      <table>
+        <search id="get_all_checks">
+          <query>
+            | makeresults | eval _makeresults = 1
+            $dataset_snippet$
+            | where isNull(_makeresults)
+            | stats count
+        </query>
+          <done>
+            <set token="num_total_checks">$result.count$</set>
+          </done>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Get all RELEVANT checks</title>
+      <table>
+        <search id="get_relevant_checks">
+          <query>
+            | makeresults | eval _makeresults = 1
+            $dataset_snippet$
+            | where isNull(_makeresults)
+            | `omb-m2131-normalize_status_lookup`
+            | `omb-m2131-link_to_status`
+            | fillnull value="Missing" 
+            | where NOT lower('check-is_relevant') IN("n", "no")
+            
+            ```Make lookup results compatible with dashboard```
+            
+            | eval
+                Event_Logging_Level = event_logging_level,
+                Log_Category = log_category,
+                Required_Data_Category = required_data_category,
+                Required_Data = 'required_data-check',
+                Required_Sub_Data = 'required_sub_data-check',
+                Splunk_Query = query,
+                Data_Collection_Status = 'coverage-data_collection_status',
+                In_Splunk = 'coverage-data_in_siem',
+                Notes = 'coverage-notes',
+                POC = 'coverage-point_of_contact',
+                required_data-pdf = required_data,
+                required_sub_data-pdf = required_sub_data 
+                  
+            | replace Yes with "Have Data", Partial with "Partial Data", No with "No Data" in Data_Collection_Status 
+            | replace Yes with "Data in Splunk", No with "Data Not in Splunk" in In_Splunk 
+            | replace * with "Level *" in Event_Logging_Level
+            
+            ```/Make lookup results compatible with dashboard```
+            
+        </query>
+          <progress>
+            <set token="categories_download_url">#</set>
+            <set token="gaps_download_url">#</set>
+            <set token="validation_download_url">#</set>
+            <set token="categories_download_label">#categories_download_label{display:none !important;}</set>
+            <set token="gaps_download_label">#gaps_download_label{display:none !important;}</set>
+            <set token="validation_download_label">#validation_download_label{display:none !important;}</set>
+          </progress>
+          <done>
+            <!--<eval token="relevant_check_count">if($job.resultCount$ &gt; 0, tostring($job.resultCount$, "commas")." checks found", "")</eval>-->
+            <eval token="num_relevant_checks">$job.resultCount$</eval>
+            <eval token="sid_grc">$job.sid$</eval>
+          </done>
+        </search>
+        <option name="count">1</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$dataset_group$">
+    <panel>
+      <html>
+        <p id="dataset_label" style="font-size: x-large; text-align: center; margin: 0 5px;">
+          <span id="dataset_header" style="font-weight: bold;">$dataset_header$: </span>
+          <span id="dataset_group">$dataset_group$</span>
+        </p>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title></title>
+      <single>
+        <search base="get_relevant_checks">
+          <query>| stats dc(eval(coalesce(Required_Data_Category, Log_Category))) AS count </query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Unique Log Categories</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="t_ell"></set>
+          <set token="t_insplunk"></set>
+          <set token="t_havedata"></set>
+          <set token="t_lc"></set>
+          <set token="show_gaps">| noop</set>
+          <set token="view_gaps">block</set>
+          <set token="view_categories">none</set>
+          <set token="view_validation">none</set>
+          <set token="view_stats">none</set>
+          <unset token="show_validation"></unset>
+          <unset token="show_stats"></unset>
+          <unset token="show_categories"></unset>
+        </drilldown>
+      </single>
+      <single>
+        <search>
+          <query>
+            | makeresults
+            | eval count = $num_relevant_checks$
+            | fields - _time
+          </query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Relevant Checks</option>
+        <option name="useColors">1</option>
+      </single>
+      <single>
+        <search>
+          <query>
+            | makeresults
+            | eval count = $num_total_checks$
+            | fields - _time
+          </query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Total Checks</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <search base="processedbase">
+          <progress>
+            <eval token="sv_subtext_suffix">case('gid_score_base'=="Data:Percent", "Data Collection", 'gid_score_base'=="Splunk:Percent", "Data Availability", 'gid_score_base'=="Total:Percent", "Overall", TRUE(), "Unknown")</eval>
+          </progress>
+          <query>| search Event_Logging_Level IN("Level 0")
+| fields Event_Logging_Level, $gid_score_base$
+| appendpipe
+    [ stats count
+    | where count=0]
+| eval id = 1
+| xyseries id, Event_Logging_Level, $gid_score_base$
+| fields "Level 0"</query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0xdc4e41","0xf1813f","0xf8be34","0x53a051","0x3C78B7"]</option>
+        <option name="rangeValues">[50,60,80,99]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Level 0 - $sv_subtext_suffix$</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+      <single>
+        <search base="processedbase">
+          <query>| search Event_Logging_Level IN("Level 0", "Level 1")
+| fields Event_Logging_Level, $gid_score_base$
+| appendpipe
+    [ stats count
+    | where count=0]
+| eval id = 1
+| xyseries id, Event_Logging_Level, $gid_score_base$
+```Check the percentage of the other levels if this one is at 100%. Per the memo, for any Criticality Level (aka Event_Logging_Level) to be 100% compliant, all previous Criticality Levels must also be 100% compliant.```
+| eval "Level 1" = if('Level 1'=100 AND 'Level 0'&lt;100, 99, 'Level 1')
+| fields "Level 1"
+</query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0xdc4e41","0xf1813f","0xf8be34","0x53a051","0x3C78B7"]</option>
+        <option name="rangeValues">[50,60,80,99]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Level 1 - $sv_subtext_suffix$</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+      <single>
+        <search base="processedbase">
+          <query>| search Event_Logging_Level IN("Level 0", "Level 1", "Level 2")
+| fields Event_Logging_Level, $gid_score_base$
+| appendpipe
+    [ stats count
+    | where count=0]
+| eval id = 1
+| xyseries id, Event_Logging_Level, $gid_score_base$
+```Check the percentage of the other levels if this one is at 100%. Per the memo, for any Criticality Level (aka Event_Logging_Level) to be 100% compliant, all previous Criticality Levels must also be 100% compliant.```
+| eval "Level 2" = if('Level 2'=100 AND ('Level 0'&lt;100 OR 'Level 1'&lt;100), 99, 'Level 2')
+| fields "Level 2"
+</query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0xdc4e41","0xf1813f","0xf8be34","0x53a051","0x3C78B7"]</option>
+        <option name="rangeValues">[50,60,80,99]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Level 2 - $sv_subtext_suffix$</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+      <single>
+        <search base="processedbase">
+          <query>| search Event_Logging_Level IN("Level 0", "Level 1", "Level 2", "Level 3")
+| fields Event_Logging_Level, $gid_score_base$
+| appendpipe
+    [ stats count
+    | where count=0]
+| eval id = 1
+| xyseries id, Event_Logging_Level, $gid_score_base$
+```Check the percentage of the other levels if this one is at 100%. Per the memo, for any Criticality Level (aka Event_Logging_Level) to be 100% compliant, all previous Criticality Levels must also be 100% compliant.```
+| eval "Level 3" = if('Level 3'=100 AND ('Level 0'&lt;100 OR 'Level 1'&lt;100 OR 'Level 2'&lt;100), 99, 'Level 3')
+| fields "Level 3"
+</query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="rangeColors">["0xdc4e41","0xf1813f","0xf8be34","0x53a051","0x3C78B7"]</option>
+        <option name="rangeValues">[50,60,80,99]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Level 3 - $sv_subtext_suffix$</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+        <p style="text-align:center; font-style:italic; margin-bottom: 0;">
+          <span style="float:left;">  </span> Click pie charts to toggle filters
+        </p>
+      </html>
+    </panel>
+  </row>
+  <row id="r_pie_filters">
+    <panel id="p_lc_pie_with_sublabel">
+      <chart>
+        <search base="filterbase">
+          <query>| stats count by Log_Category</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.001</option>
+        <option name="charting.drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <eval token="t_lc">if(match($t_lc$,"^$"),"Log_Category=\"".$click.value$."\"","")</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <body>
+          <span>Log Category</span>
+        </body>
+      </html>
+    </panel>
+    <panel id="p_ell_pie_with_sublabel">
+      <chart>
+        <search base="filterbase">
+          <query>| stats count by Event_Logging_Level</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="charting.fieldColors">{"Level 2":#53a051,"Level 3":#3C78B7,"Level 0":#B3443A,"Level 1":#D2C317}</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <eval token="t_ell">if(match($t_ell$,"^$"),"Event_Logging_Level=\"".$click.value$."\"","")</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <body>
+          <span>Event Logging Level</span>
+        </body>
+      </html>
+    </panel>
+    <panel id="p_sas_pie_with_sublabel">
+      <chart>
+        <search base="filterbase">
+          <query>| stats count by "In_Splunk"</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="charting.fieldColors">{"Data in Splunk":#53a051,"Data Not in Splunk":#B3443A,"Not Applicable":#3C78B7}</option>
+        <drilldown>
+          <eval token="t_insplunk">if(match($t_insplunk$,"^$"),"\"In_Splunk\"=\"".$click.value$."\"","")</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <body>
+          <span>Data Availability Status</span>
+        </body>
+      </html>
+    </panel>
+    <panel id="p_dcs_pie_with_sublabel">
+      <chart>
+        <search base="filterbase">
+          <query>| stats count by "Data_Collection_Status"</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.005</option>
+        <option name="charting.drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="charting.fieldColors">{"Partial Data":#D2C317,"Have Data":#53a051,"No Data":#B3443A,"Not Applicable":#3C78B7}</option>
+        <drilldown>
+          <eval token="t_havedata">if(match($t_havedata$,"^$"),"\"Data_Collection_Status\"=\"".$click.value$."\"","")</eval>
+        </drilldown>
+      </chart>
+      <html>
+        <body>
+          <span>Data Collection Status</span>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html depends="$alwaysHideCSSStylePanel$">
+        <style>
+          #singleWithCSSOverride1 svg.svg-container rect {
+            fill: #523D75 !important;
+          }
+          #singleWithCSSOverride2 svg.svg-container rect {
+            fill: #523D75 !important;
+          }           
+          #singleWithCSSOverride3 svg.svg-container rect {
+            fill: #523D75  !important;
+          }  
+          #singleWithCSSOverride4 svg.svg-container rect {
+            fill: #523D75  !important;
+           }
+           
+          div#gid_score_base [data-view="splunkjs/mvc/dropdownview"],
+          div#gid_score_base [data-component="splunk-core:/splunkjs/mvc/components/Dropdown"]
+          {
+              width: 220px !important;
+          }
+          
+          div#r_pie_filters .html
+          {
+              padding-top: 0px !important;
+              display: flex !important;
+              justify-content: center !important;
+              font-size: 12px;
+              color: #c3cbd4;
+          }
+          
+          
+          div[id$="_pie_with_sublabel"] .html:last-child
+          {
+              padding-top: 0px !important;
+              display: flex !important;
+              justify-content: center !important;
+              font-size: 12px;
+              color: #c3cbd4;
+          }
+          
+
+          #pim_gaps_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"] 
+          {
+              width: 1000px !important;
+           }
+          #pim_gaps_fields div[data-view="splunkjs/mvc/multidropdownview"] 
+          {
+              width: 1000px !important;
+              margin-right: auto !important;
+           }
+           
+          #pim_validation_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]
+          {
+              width: 750px !important;
+           }
+          #pim_validation_fields div[data-view="splunkjs/mvc/multidropdownview"]
+          {
+              width: 750px !important;
+              margin-right: auto !important;
+           }
+
+           #it_gen_search_all div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"] {
+              width: 750px !important;
+           }
+           
+           
+          .fieldset .input {
+            width:auto !important;
+           }
+
+          .splunk-radiogroup label {
+            padding-right: 5px;
+          }
+          
+          #p251 {
+            width:50% !important;
+          }   
+          #p252 {
+            width:50% !important;
+          }   
+          #p253 {
+            width:50% !important;
+          }
+          #p13 {
+            width:25% !important;
+          }
+          #p12 {
+            width:25% !important;
+          }              
+          #p10 {
+            width:10% !important;
+          }      
+          #p451 {
+            width:45% !important;
+          }      
+          #p452 {
+            width:45% !important;
+          }     
+          
+          .edit-other {
+            visibility: hidden !important;
+          }
+          
+          #im_dataset div[data-view="splunkjs/mvc/multidropdownview"] {
+              width: 500px !important;
+          }
+          #im_dataset div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]{
+              width: 500px !important;
+          }
+           
+           
+          #pie rect {
+            fill: #212527;
+          }
+          
+          a.edit-export {
+            display: none;
+          }
+           
+          #r_bottom_filters div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"],
+          #r_bottom_filters div[data-view="splunkjs/mvc/linklistview"],
+          #r_bottom_filters .input-link label
+          {
+              justify-content: center !important;
+          }
+          
+          #pil_all_clear_search div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button {
+              border: 1px #999 outset;
+          }
+          
+          .shared-resultstable-resultstableheader th
+          {
+              vertical-align: middle !important;
+          }
+          
+          
+          #pt_categories_results thead tr th:nth-child(1),
+          #pt_categories_results thead tr th:nth-child(2),
+          #pt_categories_results thead tr th:nth-child(3),
+          #pt_categories_results tbody tr td:nth-child(1),
+          #pt_categories_results tbody tr td:nth-child(2),
+          #pt_categories_results tbody tr td:nth-child(3)
+          {
+              text-align: center !important;
+          }
+          
+          #pt_categories_results tbody td:nth-child(1)
+          {
+              width: 5em !important;
+          }
+          #pt_categories_results tbody td:nth-child(2),
+          #pt_categories_results tbody td:nth-child(3)
+          {
+              width: 9em !important;
+          }
+
+          
+          
+          #pt_stats_status_metrics_perc thead tr th:nth-child(1),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(2),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(3),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(4),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(5),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(6),
+          #pt_stats_status_metrics_perc thead tr th:nth-child(7),
+          #pt_stats_status_metrics_count thead tr th:nth-child(1),
+          #pt_stats_status_metrics_count thead tr th:nth-child(2),
+          #pt_stats_status_metrics_count thead tr th:nth-child(3),
+          #pt_stats_status_metrics_count thead tr th:nth-child(4),
+          #pt_stats_status_metrics_count thead tr th:nth-child(5),
+          #pt_stats_status_metrics_count thead tr th:nth-child(6),
+          #pt_stats_status_metrics_count thead tr th:nth-child(7),
+          #pt_stats_status_metrics_count thead tr th:nth-child(8),
+          
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(2),
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(3),
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(4),
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(5),
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(6),
+          #pt_stats_status_metrics_perc tbody tr td:nth-child(7),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(2),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(3),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(4),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(5),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(6),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(7),
+          #pt_stats_status_metrics_count tbody tr td:nth-child(8),
+          
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(1),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(2),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(3),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(4),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(5),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(6),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(7),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(8),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(9),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(10),
+          #pt_stats_enrichment_metrics_perc thead tr th:nth-child(11),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(1),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(2),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(3),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(4),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(5),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(6),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(7),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(8),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(9),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(10),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(11),
+          #pt_stats_enrichment_metrics_count thead tr th:nth-child(12),
+          
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(2),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(3),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(4),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(5),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(6),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(7),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(8),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(9),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(10),
+          #pt_stats_enrichment_metrics_perc tbody tr td:nth-child(11),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(2),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(3),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(4),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(5),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(6),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(7),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(8),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(9),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(10),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(11),
+          #pt_stats_enrichment_metrics_count tbody tr td:nth-child(12)
+          {
+              text-align: center !important;
+          }
+          
+          
+          #pt_stats_status_metrics_perc tbody td:nth-child(2),
+          #pt_stats_status_metrics_perc tbody td:nth-child(3),
+          #pt_stats_status_metrics_perc tbody td:nth-child(4)
+          {
+              width: 10em !important;
+          }
+          
+          #pt_stats_status_metrics_perc tbody td:nth-child(5),
+          #pt_stats_status_metrics_perc tbody td:nth-child(6)
+          {
+              width: 11em !important;
+          }
+          
+          #pt_stats_status_metrics_perc tbody td:nth-child(7)
+          {
+              width: 15em !important;
+          }
+          
+          /*========*/
+          /*========*/
+          
+          #pt_stats_status_metrics_count tbody td:nth-child(2)
+          {
+              width: 7em !important;
+          }
+          
+          #pt_stats_status_metrics_count tbody td:nth-child(3),
+          #pt_stats_status_metrics_count tbody td:nth-child(4),
+          #pt_stats_status_metrics_count tbody td:nth-child(5)
+          {
+              width: 10em !important;
+          }
+          
+          #pt_stats_status_metrics_count tbody td:nth-child(6),
+          #pt_stats_status_metrics_count tbody td:nth-child(7)
+          {
+              width: 11em !important;
+          }
+          
+          #pt_stats_status_metrics_count tbody td:nth-child(8)
+          {
+              width: 15em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(2)
+          {
+              width: 10em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(3)
+          {
+              width: 8em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(4),
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(5)
+          {
+              width: 11em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(6)
+          {
+              width: 8em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(7),
+          #pt_stats_enrichment_metrics_perc  tbody td:nth-child(8)
+          {
+              width: 7em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(2)
+          {
+            width: 7em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(3),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(4)
+          {
+            width: 10em !important;
+          }
+          
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(5),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(6),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(7),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(8),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(9),
+          #pt_stats_enrichment_metrics_count  tbody td:nth-child(10)
+          {
+            width: 7em !important;
+          }
+
+          
+          #pt_validation_results tbody tr td:nth-child(8),
+          #pt_validation_results tbody tr td:nth-child(9)
+          {
+              width: 8em !important;
+          }
+          
+          div#pt_validation_results table tr th:nth-child(1),
+          div#pt_validation_results table tr td:nth-child(1),
+          div#pt_validation_results table tr th:nth-child(2),
+          div#pt_validation_results table tr td:nth-child(2),
+          div#pt_validation_results table tr th:nth-child(3),
+          div#pt_validation_results table tr td:nth-child(3),
+          div#pt_validation_results table tr th:nth-child(4),
+          div#pt_validation_results table tr td:nth-child(4),
+          div#pt_validation_results table tr th:nth-child(5),
+          div#pt_validation_results table tr td:nth-child(5)
+          {
+              text-wrap: wrap !important;
+          }
+          
+          #pt_validation_results table td:nth-child(1),
+          #pt_validation_results table td:nth-child(2),
+          #pt_validation_results table td:nth-child(3),
+          #pt_validation_results table td:nth-child(4),
+          #pt_validation_results table td:nth-child(5)
+          {
+              min-width: 12em !important;
+          }
+          
+          #pt_validation_results table td:nth-child(8),
+          #pt_validation_results table td:nth-child(9),
+          #pt_validation_results table th:nth-child(8),
+          #pt_validation_results table th:nth-child(9)
+          {
+              min-width: 8em !important;
+              text-wrap: pretty !important;
+              text-align: center !important;
+          }
+          
+          
+          
+          #pt_validation_results table td:nth-child(6),
+          #pt_validation_results table th:nth-child(6)
+          
+          {
+              min-width: 15em !important; 
+              text-wrap: pretty !important;
+          }
+          
+          div#pt_gaps_results table tr th:nth-child(3),
+          div#pt_gaps_results table tr th:nth-child(4),
+          div#pt_gaps_results table tr th:nth-child(5)
+          {
+              min-width: 5em !important;
+          }
+          
+          div#pt_gaps_results table tr th:nth-child(3),
+          div#pt_gaps_results table tr td:nth-child(3),
+          div#pt_gaps_results table tr th:nth-child(4),
+          div#pt_gaps_results table tr td:nth-child(4),
+          div#pt_gaps_results table tr th:nth-child(5),
+          div#pt_gaps_results table tr td:nth-child(5)
+          {
+              text-align: center !important;
+          }
+
+          #gid_score_base button:first-child:not([label="Overall Status"]),
+          #pid_categories_granularity button:first-child:not([label="Required Data Category"]),
+          #id_stats_groupby button:first-child:not([label="Required Data Category"])
+          {
+              border: 1px #B69231 solid !important;
+          }
+          
+          #it_gen_search_all div[data-component="splunk-core:/splunkjs/mvc/components/TextInput"]:not(div[data-test-value='*']):not(div[data-test-value=''])
+          {
+              border: 1px #B69231 solid !important;
+              border-radius: 3px !important;
+          }
+          
+          
+          #pil_os_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button,
+          #pil_dcs_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button,
+          #pil_sas_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button,
+          #pil_stats_style div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button,
+          #pil_gaps_have_data_checks div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button
+          {
+            border: 1px #999 outset !important;
+          }
+          
+          #pil_os_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex],
+          #pil_dcs_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex],
+          #pil_sas_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex],
+          #pil_stats_style div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex],
+          #pil_gaps_have_data_checks div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex] 
+          {
+              border-style: inset !important;
+              border-width: 1px !important;
+          }
+          
+          #pil_os_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex]:not([label="Include"]),
+          #pil_dcs_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex]:not([label="Include"]),
+          #pil_sas_100 div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex]:not([label="Include"]),
+          #pil_stats_style div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex]:not([label="Percentage"]),
+          #pil_gaps_have_data_checks div[data-component="splunk-core:/splunkjs/mvc/components/LinkList"] button[tabindex]:not([label="Exclude"]) 
+          {
+              border: 1px #B69231 inset !important;
+          }
+          
+          div#pil_os_100 button:not([tabindex]),
+          div#pil_dcs_100 button:not([tabindex]),
+          div#pil_sas_100 button:not([tabindex]),
+          div#pil_gaps_have_data_checks button:not([tabindex]),
+          div#pil_stats_style button:not([tabindex])
+          {
+              color: #999;
+          }
+          
+          #pim_gaps_check_type div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["data"]']),
+          #pim_gaps_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["POC","Notes","Event_Logging_Level","Log_Category","Required_Data_Category","Required_Data","Required_Sub_Data"]']),
+          #pim_validation_fields div[data-component="splunk-core:/splunkjs/mvc/components/MultiDropdown"]:not(div[data-test-values='["Hierarchy","POC","Splunk_Query"]'])
+          {
+              border: 1px #B69231 solid !important;
+          }
+          
+          $categories_download_label$
+          $gaps_download_label$
+          $validation_download_label$
+
+           
+        </style>
+      </html>
+      <single id="singleWithCSSOverride2">
+        <search>
+          <query>| makeresults | eval message="Categories", range="low"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_categories$</option>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">84</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="categories_download_label">#categories_download_label{display:none !important;}</set>
+          <eval token="show_categories">if(isnull($show_categories$),"| noop",NULL)</eval>
+          <eval token="view_categories">if($view_categories$=="block","none","block")</eval>
+          <unset token="show_gaps"></unset>
+          <set token="view_gaps">none</set>
+          <unset token="show_validation"></unset>
+          <set token="view_validation">none</set>
+          <unset token="show_stats"></unset>
+          <set token="view_stats">none</set>
+        </drilldown>
+      </single>
+      <single id="singleWithCSSOverride1">
+        <search>
+          <query>| makeresults | eval message="Gaps", val=1 | rangemap field=val low=0-100</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_gaps$</option>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">84</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="gaps_download_label">#gaps_download_label{display:none !important;}</set>
+          <eval token="show_gaps">if(isnull($show_gaps$),"| noop",NULL)</eval>
+          <eval token="view_gaps">if($view_gaps$=="block","none","block")</eval>
+          <unset token="show_categories"></unset>
+          <set token="view_categories">none</set>
+          <unset token="show_validation"></unset>
+          <set token="view_validation">none</set>
+          <unset token="show_stats"></unset>
+          <set token="view_stats">none</set>
+        </drilldown>
+      </single>
+      <single id="singleWithCSSOverride4">
+        <search>
+          <query>| makeresults | eval message="Statistics"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_stats$</option>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">84</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <eval token="show_stats">if(isnull($show_stats$),"| noop",NULL)</eval>
+          <eval token="view_stats">if($view_stats$=="block","none","block")</eval>
+          <unset token="show_gaps"></unset>
+          <set token="view_gaps">none</set>
+          <unset token="show_categories"></unset>
+          <set token="view_categories">none</set>
+          <unset token="show_validation"></unset>
+          <set token="view_validation">none</set>
+        </drilldown>
+      </single>
+      <single id="singleWithCSSOverride3">
+        <search>
+          <query>| makeresults | eval message="Validation"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">$view_validation$</option>
+        <option name="drilldown">all</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="height">84</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="validation_download_label">#validation_download_label{display:none !important;}</set>
+          <eval token="show_validation">if(isnull($show_validation$),"| noop",NULL)</eval>
+          <eval token="view_validation">if($view_validation$=="block","none","block")</eval>
+          <unset token="show_gaps"></unset>
+          <set token="view_gaps">none</set>
+          <unset token="show_categories"></unset>
+          <set token="view_categories">none</set>
+          <unset token="show_stats"></unset>
+          <set token="view_stats">none</set>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row id="r_bottom_filters">
+    <panel id="p_bottom_filters">
+      <input type="text" token="pit_all_search" searchWhenChanged="true" id="it_gen_search_all">
+        <label>Splunk Query/Keyword Filter</label>
+        <default></default>
+        <change>
+          <condition value="">
+            <set token="general_search-all"></set>
+          </condition>
+          <condition>
+            <set token="general_search-all">| search $pit_all_search$</set>
+          </condition>
+        </change>
+      </input>
+      <input type="link" token="pil_all_clear_search" id="pil_all_clear_search" searchWhenChanged="true">
+        <label></label>
+        <choice value="1">Clear Search</choice>
+        <change>
+          <condition value="1">
+            <set token="form.pit_all_search"></set>
+            <set token="d_selection_node_prev">$d_selection_node_cur$</set>
+            <set token="d_selection_node_cur">NULL</set>
+            <set token="d_filter_sp_checks"></set>
+            <set token="form.pil_all_clear_search"></set>
+          </condition>
+        </change>
+      </input>
+      <input type="dropdown" token="pid_categories_granularity" searchWhenChanged="true" id="pid_categories_granularity" depends="$show_categories$">
+        <label>Granularity</label>
+        <choice value="lc">Log Category</choice>
+        <choice value="rdc">Required Data Category</choice>
+        <choice value="rd">Required Data</choice>
+        <default>rdc</default>
+        <change>
+          <condition value="lc">
+            <set token="categories_granularity">Log_Category</set>
+          </condition>
+          <condition value="rdc">
+            <set token="categories_granularity">Log_Category Required_Data_Category</set>
+          </condition>
+          <condition value="rd">
+            <set token="categories_granularity">Log_Category Required_Data_Category Required_Data</set>
+          </condition>
+        </change>
+      </input>
+      <input type="link" token="pil_os_100" id="pil_os_100" depends="$show_categories$">
+        <label>Overall Scores at 100%</label>
+        <choice value="100">Exclude</choice>
+        <choice value="=100">Include</choice>
+        <initialValue>=100</initialValue>
+      </input>
+      <input type="link" token="pil_dcs_100" id="pil_dcs_100" depends="$show_categories$">
+        <label>Data Collection Scores at 100%</label>
+        <choice value="100">Exclude</choice>
+        <choice value="=100">Include</choice>
+        <initialValue>=100</initialValue>
+      </input>
+      <input type="link" token="pil_sas_100" id="pil_sas_100" depends="$show_categories$">
+        <label>Data Availability Scores at 100%</label>
+        <choice value="100">Exclude</choice>
+        <choice value="=100">Include</choice>
+        <initialValue>=100</initialValue>
+      </input>
+      <input type="dropdown" token="id_stats_groupby" id="id_stats_groupby" searchWhenChanged="true" depends="$show_stats$">
+        <label>Field to Analyze</label>
+        <choice value="ell">Event Logging Level</choice>
+        <choice value="lc">Log Category</choice>
+        <choice value="rdc">Required Data Category</choice>
+        <choice value="rd">Required Data</choice>
+        <default>rdc</default>
+        <change>
+          <condition value="ell">
+            <set token="stats_groupby">Event_Logging_Level</set>
+          </condition>
+          <condition value="lc">
+            <set token="stats_groupby">Log_Category</set>
+          </condition>
+          <condition value="rdc">
+            <set token="stats_groupby">Required_Data_Category</set>
+          </condition>
+          <condition value="rd">
+            <set token="stats_groupby">Required_Data</set>
+          </condition>
+        </change>
+      </input>
+      <input type="link" token="pil_stats_style" id="pil_stats_style" searchWhenChanged="true" depends="$show_stats$">
+        <label>Display Style</label>
+        <choice value="perc">Percentage</choice>
+        <choice value="count">Count</choice>
+        <default>perc</default>
+        <change>
+          <condition>
+            <eval token="show_stats_perc">if('pil_stats_style'=="perc", "| noop", NULL)</eval>
+            <eval token="show_stats_count">if('pil_stats_style'=="count", "| noop", NULL)</eval>
+          </condition>
+        </change>
+        <initialValue>perc</initialValue>
+      </input>
+      <input type="multiselect" token="pim_gaps_check_type" id="pim_gaps_check_type" depends="$show_gaps$">
+        <label>Type of Checks</label>
+        <choice value="*">All</choice>
+        <choice value="data">Data Sources</choice>
+        <choice value="field">Data Fields</choice>
+        <default>data</default>
+      </input>
+      <input type="link" token="pil_gaps_have_data_checks" id="pil_gaps_have_data_checks" searchWhenChanged="true" depends="$show_gaps$">
+        <label>Checks with All Data Collected</label>
+        <choice value="&quot;y&quot;, &quot;yes&quot;">Exclude</choice>
+        <choice value="&quot;pass&quot;">Include</choice>
+        <default>"y", "yes"</default>
+      </input>
+      <input type="multiselect" token="pim_gaps_fields" id="pim_gaps_fields" searchWhenChanged="true" depends="$show_gaps$">
+        <label>Fields</label>
+        <delimiter> </delimiter>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search base="filterbase">
+          <query>$show_gaps$ 
+|  fields - Check_ID, Check, Check_Type, Data_Collection_Status, In_Splunk
+| rename hierarchy AS Hierarchy
+| fieldsummary 
+| fields field</query>
+        </search>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <default>POC,Notes,Event_Logging_Level,Log_Category,Required_Data_Category,Required_Data,Required_Sub_Data</default>
+      </input>
+      <input type="multiselect" token="pim_validation_fields" id="pim_validation_fields" searchWhenChanged="true" depends="$show_validation$">
+        <label>Fields</label>
+        <delimiter> </delimiter>
+        <fieldForLabel>field</fieldForLabel>
+        <fieldForValue>field</fieldForValue>
+        <search>
+          <query>| loadjob $sid_grc$ $show_validation$ | fields - Check_ID, Event_Logging_Level, Log_Category, Required_Data, Required_Sub_Data, Data_Collection_Status, Splunk_Query, In_Splunk | rename hierarchy AS Hierarchy  | fieldsummary | fields field</query>
+        </search>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <default>Hierarchy,POC,Splunk_Query</default>
+        <initialValue>Hierarchy,POC,Splunk_Query</initialValue>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_categories$">
+      <html>
+        <span id="categories_download_label">
+            <i>Click <a href="$categories_download_url$">here</a> to <b>export</b> the results shown below.</i>
+        </span>
+      </html>
+      <table id="pt_categories_results">
+        <title>$categories_check_count$</title>
+        <search>
+          <progress>
+            <eval token="categories_check_count"></eval>
+            <set token="categories_download_label">#categories_download_label{display:none !important;}</set>
+          </progress>
+          <done>
+            <eval token="categories_check_count">if($job.resultCount$ &gt; 0, tostring($job.resultCount$, "commas")." scores returned", "")</eval>
+            <eval token="categories_download_filename">"omb-m2131-breakdown-categories-".strftime(now(), "%Y%m%dT%H%M%z")</eval>
+            <set token="categories_download_url">/api/search/jobs/$job.sid$/results?isDownload=true&amp;timeFormat=%FT%T.%Q%:z&amp;maxLines=0&amp;count=0&amp;filename=$categories_download_filename$&amp;outputMode=csv</set>
+            <set token="categories_download_label">#categories_download_label{display:inline !important;}</set>
+          </done>
+          <query>| makeresults | eval _makeresults = 1
+            $dataset_snippet$
+            | where isNull(_makeresults)
+            | `omb-m2131-normalize_status_lookup`
+            | `omb-m2131-link_to_status`
+            | fillnull value="Missing" 
+            | where NOT lower('check-is_relevant') IN("n", "no")
+            
+            ```Make lookup results compatible with dashboard```
+            | eval
+                Event_Logging_Level = event_logging_level,
+                Log_Category = log_category,
+                Required_Data_Category = required_data_category,
+                Required_Data = 'required_data-check',
+                Required_Sub_Data = 'required_sub_data-check',
+                Splunk_Query = query,
+                Data_Collection_Status = 'coverage-data_collection_status',
+                In_Splunk = 'coverage-data_in_siem',
+                Notes = 'coverage-notes',
+                POC = 'coverage-point_of_contact',
+                required_data-pdf = required_data,
+                required_sub_data-pdf = required_sub_data 
+
+            | replace Yes with "Have Data", Partial with "Partial Data", No with "No Data" in Data_Collection_Status 
+            | replace Yes with "Data in Splunk", No with "Data Not in Splunk" in In_Splunk 
+            | replace * with "Level *" in Event_Logging_Level
+            
+            ```/Make lookup results compatible with dashboard```
+            
+          | search $t_lc$ $t_ell$ $t_insplunk$ $t_havedata$
+          | tojson output_field=_raw $general_search-all$ | fields - _raw
+          
+          | fillnull value=NULL Required_Data_Category
+          
+      | stats 
+          count(eval(In_Splunk="Data in Splunk")) AS Splunk_Has
+          count(eval(In_Splunk="Data Not in Splunk")) AS Splunk_Not 
+          count(eval(Data_Collection_Status="Have Data")) AS Data_Has 
+          count(eval(Data_Collection_Status="No Data")) AS Data_Not 
+          count(eval(Data_Collection_Status="Partial Data")) AS Data_Partial 
+          min(order) AS order
+        by Event_Logging_Level $categories_granularity$
+| eval  
+    Splunk_Percent = floor((Splunk_Has/(Splunk_Has+Splunk_Not))*100), 
+    Data_Percent = floor(((Data_Has+(Data_Partial/2))/(Data_Has+Data_Not+Data_Partial))*100),
+    Overall_Percent = floor( ( (Splunk_Has+(Data_Has+(Data_Partial/2))) / ((Splunk_Has+Splunk_Not)+(Data_Has+Data_Not+Data_Partial)) )*100)
+          
+        
+           $show_categories$ 
+| eval Required_Data_Category = case(NOT Required_Data_Category IN("NULL", "Missing"), Required_Data_Category)
+| where 
+    Splunk_Percent &lt;$pil_sas_100$
+    AND Data_Percent &lt;$pil_dcs_100$
+    AND Overall_Percent &lt;$pil_os_100$
+| where isNotNull(Overall_Percent) AND isNotNull(Data_Percent) AND isNotNull(Splunk_Percent)
+| fields Overall_Percent Data_Percent Splunk_Percent Event_Logging_Level $categories_granularity$
+| rename 
+    Overall_Percent AS "Overall Score"
+    Data_Percent AS "Data Collection Score"
+    Splunk_Percent AS "Data Availability Score"
+    Event_Logging_Level AS "Event Logging Level"
+    Log_Category AS "Log Category"
+    Required_Data_Category AS "Required Data Category"
+    Required_Data AS "Required Data"</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">cell</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="number" field="Overall Score">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Collection Score">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Availability Score">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="color" field="Overall Score">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Data Collection Score">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Data Availability Score">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Log_Category">
+          <colorPalette type="map"></colorPalette>
+        </format>
+        <drilldown>
+          <set token="show_validation">|noop</set>
+          <set token="view_validation">block</set>
+          <set token="view_categories">none</set>
+          <unset token="show_categories"></unset>
+          <eval token="form.pit_all_search">"Event_Logging_Level=\"".'row.Event Logging Level'."\" Log_Category=\"".'row.Log Category'."\"".if('categories_granularity'="Log_Category", "", if(isNull('row.Required Data Category'), "", " Required_Data_Category=\"".'row.Required Data Category'."\"")).if('categories_granularity'=="Log_Category Required_Data_Category", "", if(isNull('row.Required Data'), "", " Required_Data=\"".'row.Required Data'."\""))</eval>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_gaps$">
+      <viz type="network-diagram-viz.network-diagram-viz" id="viz_kg">
+        <search>
+          <query>| makeresults 
+$show_gaps$
+| eval _makeresults = 1
+$dataset_snippet$
+| where isNull(_makeresults)
+| `omb-m2131-normalize_status_lookup`
+| `omb-m2131-link_to_status`
+| fields 
+    event_logging_level, log_category, log_category-guid
+    check, check_type, check_id, check-guid
+    coverage-data_collection_status, coverage-data_in_siem
+| fillnull value="Missing"
+| search NOT 'check-is_relevant' IN("n", "no")
+
+```Make lookup results compatible with dashboard```
+| eval 
+    Event_Logging_Level = event_logging_level,
+    Log_Category = log_category,
+    Data_Collection_Status = coverage-data_collection_status,
+    In_Splunk = coverage-data_in_siem
+
+| replace Yes with "Have Data", Partial with "Partial Data", No with "No Data" in Data_Collection_Status 
+| replace Yes with "Data in Splunk", No with "Data Not in Splunk" in In_Splunk 
+| replace * with "Level *" in Event_Logging_Level
+```/Make lookup results compatible with dashboard```
+
+
+| search check_type IN($pim_gaps_check_type$)
+| where NOT lower('coverage-data_collection_status') IN($pil_gaps_have_data_checks$)
+
+| search $t_lc$ $t_ell$ $t_insplunk$ $t_havedata$
+
+| eval
+    index = replace(lower(if(
+            match(log_category, "^(?i)(network|cloud|operating|privileged|system|data loss)")
+            , replace(replace(log_category, "^(\S+ \S+)\s.+$$", "\1"), "\s", "_")
+            , replace(log_category, "^(\S+)\s.+$$", "\1"))
+        ), "-", ""),
+    log_category = trim(
+        case(match(log_category, "(?i)(windows)")
+            , replace(log_category, "^(.+?Windows).+$", "\1"),
+            match(log_category, "(?i)(container)")
+            , "Container",
+            TRUE(), replace(log_category, "^([^\(]+)(?:\(.+)?$$", "\1")))
+            
+    
+| appendpipe
+    [| `z__omb-m2131-viz-objectset-log_category` ]
+| appendpipe
+    [| `z__omb-m2131-viz-objectset-check` ]
+| appendpipe
+    [| `z__omb-m2131-viz-linkset-lc_to_c` ]
+
+
+| where isNotNull(objectset) OR isNotNull(linkset)
+
+| eventstats c(eval(isNotNull(objectset))) AS node_count
+| eval 
+    layout = case(node_count &gt;= 500, "large", node_count &gt; 100, "medium", TRUE(), "small"),
+    viz:x = case(isNotNull(loc), json_extract(loc, layout.".".from.".x")),
+    viz:y = case(isNotNull(loc), json_extract(loc, layout.".".from.".y"))
+| fields from, to, viz:*, node_name, objectset, linkset, layout, score*, check_id*
+| rename viz:* AS *
+| fields node_name, objectset, linkset, from, to, nodeText, value, color, nodeTextColor, linkText, link*, type, *
+          </query>
+        </search>
+        <option name="network-diagram-viz.network-diagram-viz.arrowLocation">none</option>
+        <option name="network-diagram-viz.network-diagram-viz.canZoom">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.clusterBy">none</option>
+        <option name="network-diagram-viz.network-diagram-viz.defaultLinkLength">100</option>
+        <option name="network-diagram-viz.network-diagram-viz.defaultNodeType">circle</option>
+        <option name="network-diagram-viz.network-diagram-viz.draggableNodes">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.drilldownClick">singleOrDouble</option>
+        <option name="network-diagram-viz.network-diagram-viz.enablePhysics">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchy">false</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchyDirection">Top-Down</option>
+        <option name="network-diagram-viz.network-diagram-viz.hierarchySortMethod">directed</option>
+        <option name="network-diagram-viz.network-diagram-viz.levelSeparation">150</option>
+        <option name="network-diagram-viz.network-diagram-viz.linkTextLocation">bottom</option>
+        <option name="network-diagram-viz.network-diagram-viz.linkTextSize">medium</option>
+        <option name="network-diagram-viz.network-diagram-viz.missingImageURL">/static/app/network-diagram-viz/customimages/404.gif</option>
+        <option name="network-diagram-viz.network-diagram-viz.nodeSpacing">100</option>
+        <option name="network-diagram-viz.network-diagram-viz.nodeTextSize">medium</option>
+        <option name="network-diagram-viz.network-diagram-viz.physicsModel">forceAtlas2Based</option>
+        <option name="network-diagram-viz.network-diagram-viz.shakeTowards">roots</option>
+        <option name="network-diagram-viz.network-diagram-viz.smoothEdgeType">dynamic</option>
+        <option name="network-diagram-viz.network-diagram-viz.smoothEdges">true</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenNode">nd_node_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenToNode">nd_to_node_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenToolTip">nd_tooltip_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.tokenValue">nd_value_token</option>
+        <option name="network-diagram-viz.network-diagram-viz.wrapNodeText">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="height">600</option>
+        <drilldown>
+          <eval token="d_check_ids">replace('row.value', " / ", ",")</eval>
+          <set token="d_selected_node_cur">$nd_tooltip_token$</set>
+          <eval token="d_selection_changed">if($d_selection_node_cur$ == $d_selection_node_prev$, "no", "yes")</eval>
+          <eval token="d_selected_node_prev">if($d_selection_changed$ == "yes", $nd_tooltip_token$, NULL)</eval>
+          <eval token="d_check">'row.value'</eval>
+          <eval token="d_check_from">'row.from'</eval>
+          <eval token="d_check_label_category">trim(replace('row.value', "^([^\\(:]+)[\\(:].+$", "$1"))</eval>
+          <eval token="d_check_label_name">trim(replace('row.value', "^[^:]+:\s+(\S.*)$", "$1"))</eval>
+          <eval token="d_check_field_name">lower(replace($d_check_label_category$, "\\s", "_"))</eval>
+          <eval token="d_filter_sp_checks">if('row.from' != "null", "guid_key IN(\"".mvjoin(split('row.from', ";"), "\", \"")."\")", 'd_filter_sp_checks')</eval>
+          <eval token="form.pit_all_search">'d_filter_sp_checks'</eval>
+        </drilldown>
+      </viz>
+    </panel>
+    <panel depends="$show_gaps$">
+      <html>
+        <span id="gaps_download_label">
+            <i>Click <a href="$gaps_download_url$">here</a> to <b>export</b> the results shown below.</i>
+        </span>
+      </html>
+      <table id="pt_gaps_results">
+        <search>
+          <progress>
+            <eval token="gaps_check_count"></eval>
+            <set token="gaps_download_label">#gaps_download_label{display:none !important;}</set>
+          </progress>
+          <done>
+            <eval token="gaps_check_count">if($job.resultCount$ &gt; 0, tostring($job.resultCount$, "commas")." scores returned", "")</eval>
+            <eval token="gaps_download_filename">"omb-m2131-breakdown-gaps-".strftime(now(), "%Y%m%dT%H%M%z")</eval>
+            <set token="gaps_download_url">/api/search/jobs/$job.sid$/results?isDownload=true&amp;timeFormat=%FT%T.%Q%:z&amp;maxLines=0&amp;count=0&amp;filename=$gaps_download_filename$&amp;outputMode=csv</set>
+            <set token="gaps_download_label">#gaps_download_label{display:inline !important;}</set>
+          </done>
+          <query>| makeresults 
+$show_gaps$
+| eval _makeresults = 1
+$dataset_snippet$
+| where isNull(_makeresults)
+| `omb-m2131-normalize_status_lookup`
+| `omb-m2131-link_to_status`
+| fillnull value="Missing" 
+| search NOT check-is_relevant IN("n", "no")
+
+| foreach required_data_category, required_sub_data
+    [| eval &lt;&lt;FIELD&gt;&gt; = case(NOT upper('&lt;&lt;FIELD&gt;&gt;') IN("NULL", "MISSING"), '&lt;&lt;FIELD&gt;&gt;')
+        ]
+```Make lookup results compatible with dashboard```
+| eval
+    Event_Logging_Level = event_logging_level,
+    Log_Category = log_category,
+    Data_Collection_Status = 'coverage-data_collection_status',
+    In_Splunk = 'coverage-data_in_siem',
+    Check_ID = check_id,
+    Notes = 'coverage-notes',
+    Required_Data_Category = required_data_category, 
+    Required_Data = 'required_data-check', 
+    Required_Sub_Data = 'required_sub_data-check',
+    Check = check,
+    Check_Type = check_type
+    
+| replace Yes with "Have Data", Partial with "Partial Data", No with "No Data" in Data_Collection_Status 
+| replace Yes with "Data in Splunk", No with "Data Not in Splunk" in In_Splunk 
+| replace * with "Level *" in Event_Logging_Level
+```/Make lookup results compatible with dashboard```
+
+| search check_type IN($pim_gaps_check_type$)
+| where NOT lower('coverage-data_collection_status') IN($pil_gaps_have_data_checks$)
+
+| search $t_lc$ $t_ell$ $t_insplunk$ $t_havedata$
+| tojson output_field=_raw $general_search-all$ | fields - _raw
+ 
+| search $d_filter_sp_checks$
+| fields - event_logging_level, log_category, coverage-data_collection_status, coverage-data_in_siem, check_id, coverage-notes, required_data_category, required_data, required_sub_data, check, check_type
+| rename hierarchy AS Hierarchy
+| fields Check_ID, Check, Check_Type, Data_Collection_Status, In_Splunk, $pim_gaps_fields$
+| rename 
+    Check_ID AS "Check ID"
+    Check_Type AS "Check Type"
+    Data_Collection_Status AS "Data Collection Status"
+    In_Splunk AS "Data Availability Status"
+    Event_Logging_Level AS "Event Logging Level"
+    Log_Category AS "Log Category"
+    Required_Data_Category AS "Required Data Category"
+    Required_Data AS "Required Data"
+    Required_Sub_Data AS "Required Sub Data"</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="wrap">false</option>
+        <format type="color" field="Check Type">
+          <colorPalette type="map">{"Data":#3A2362,"Field":#DFB01C}</colorPalette>
+        </format>
+        <format type="color" field="Data Collection Status">
+          <colorPalette type="map">{"Have Data":#3E753C,"Partial Data":#DFB01C,"No Data":#720E1F,"Not Applicable":#3C78B7}</colorPalette>
+        </format>
+        <format type="color" field="Data Availability Status">
+          <colorPalette type="map">{"Data in Splunk":#3E753C,"Data Not in Splunk":#720E1F,"Not Applicable":#3C78B7}</colorPalette>
+        </format>
+        <drilldown>
+          <eval token="form.pit_all_search">case('click.name2'=="Check ID", "check_id IN(\"".'click.value2'."\")", 'click.name2'=="Check", "check IN(\"".'click.value2'."\")", 'click.name2'=="Data Collection Status", "Data_Collection_Status IN(\"".'click.value2'."\")", TRUE(), 'pit_all_search')</eval>
+          <eval token="form.pim_gaps_check_type">if('click.name2'=="Check Type", lower('click.value2'), 'pim_gaps_check_type')</eval>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_stats$">
+      <title>Data Collection/Availability Stats</title>
+      <table depends="$__hidden__$">
+        <title>Base Search: stats_status_metrics_base</title>
+        <search id="stats_status_metrics_base" base="filterbase">
+          <query>$show_stats$
+| fields Event_Logging_Level, Log_Category, Required_Data_Category, Required_Data, Required_Sub_Data, Data_Collection_Status, In_Splunk
+| stats 
+    c AS Subtotal
+    count(eval(Data_Collection_Status=="Have Data")) AS dcs-a
+    count(eval(Data_Collection_Status=="Partial Data")) AS dcs-p
+    count(eval(Data_Collection_Status=="No Data")) AS dcs-n
+    count(eval(In_Splunk=="Data in Splunk")) AS das-f
+    count(eval(In_Splunk=="Data Not in Splunk")) AS das-m
+    count(eval(Data_Collection_Status IN("Have Data", "Partial Data") AND In_Splunk=="Data Not in Splunk")) AS  cbm 
+    by $stats_groupby$
+| streamstats c AS marker</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+      <table id="pt_stats_status_metrics_perc" depends="$show_stats_perc$">
+        <search base="stats_status_metrics_base">
+          <query>$show_stats_perc$
+| foreach *
+    [| eval 
+        "&lt;&lt;FIELD&gt;&gt;" = if("&lt;&lt;FIELD&gt;&gt;" IN($stats_groupby|s$, "Subtotal", "marker"), '&lt;&lt;FIELD&gt;&gt;', floor(('&lt;&lt;FIELD&gt;&gt;'/Subtotal)*100) )
+        ]
+| appendpipe
+    [| search NOT $stats_groupby$ IN("Median", "Average", "Standard Deviation")
+    | stats
+        median(dcs-a) AS dcs-a
+        median(dcs-p) AS dcs-p
+        median(dcs-n) AS dcs-n
+        median(das-f) AS das-f
+        median(das-m) AS das-m
+        median(cbm) AS cbm
+    | eval 
+        $stats_groupby$ = "Median",
+        marker = -3
+        ]
+| appendpipe
+    [| search NOT $stats_groupby$ IN("Median", "Average", "Standard Deviation")
+    | stats
+        avg(dcs-a) AS dcs-a
+        avg(dcs-p) AS dcs-p
+        avg(dcs-n) AS dcs-n
+        avg(das-f) AS das-f
+        avg(das-m) AS das-m
+        avg(cbm) AS cbm
+    | eval 
+        $stats_groupby$ = "Average",
+        marker = -2
+        ]
+| appendpipe
+    [| search NOT $stats_groupby$ IN("Median", "Average", "Standard Deviation")
+    | stats
+        stdev(dcs-a) AS dcs-a
+        stdev(dcs-p) AS dcs-p
+        stdev(dcs-n) AS dcs-n
+        stdev(das-f) AS das-f
+        stdev(das-m) AS das-m
+        stdev(cbm) AS cbm
+    | eval 
+        $stats_groupby$ = "Standard Deviation",
+        marker = -1
+        ]
+| sort marker
+| fields - marker, Subtotal
+| rename 
+    dcs-a AS "Data Collection Status: All"
+    dcs-p AS "Data Collection Status: Partial"
+    dcs-n AS "Data Collection Status: None"
+    das-f AS "Data Availability Status: In SIEM"
+    das-m AS "Data Availability Status: Not In SIEM"
+    cbm AS "All/Partial Data Collected, But Not Available In SIEM"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="color" field="Event_Logging_Level">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data_Category">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Log_Category">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="number" field="Subtotal">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Collection Status: All">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Collection Status: Partial">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Collection Status: None">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Availability Status: In SIEM">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Data Availability Status: Not In SIEM">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="All/Partial Data Collected, But Not Available In SIEM">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="color" field="Data Collection Status: All">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Data Collection Status: None">
+          <colorPalette type="list">[#016074,#3E753C,#F8BE34,#F1813F,#720E1F]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Data Availability Status: In SIEM">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Data Availability Status: Not In SIEM">
+          <colorPalette type="list">[#016074,#3E753C,#F8BE34,#F1813F,#720E1F]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+      </table>
+      <table id="pt_stats_status_metrics_count" depends="$show_stats_count$">
+        <search base="stats_status_metrics_base">
+          <query>$show_stats_count$
+| addcoltotals labelfield=$stats_groupby$ label="Total"
+| eval marker = if($stats_groupby$ == "Total", -1, marker)
+| sort marker
+| fields - marker
+| rename 
+    dcs-a AS "Data Collection Status: All"
+    dcs-p AS "Data Collection Status: Partial"
+    dcs-n AS "Data Collection Status: None"
+    das-f AS "Data Availability Status: In SIEM"
+    das-m AS "Data Availability Status: Not In SIEM"
+    cbm AS "All/Partial Data Collected, But Not Available In SIEM"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="color" field="Event_Logging_Level">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data_Category">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Log_Category">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Data Collection Status: All">
+          <colorPalette type="map">{"0":#720E1F}</colorPalette>
+        </format>
+        <format type="color" field="Data Collection Status: None">
+          <colorPalette type="map">{"0":#016074}</colorPalette>
+        </format>
+        <format type="color" field="Data Availability Status: In SIEM">
+          <colorPalette type="map">{"0":#720E1F}</colorPalette>
+        </format>
+        <format type="color" field="Data Availability Status: Not In SIEM">
+          <colorPalette type="map">{"0":#016074}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_stats$">
+      <title>Enrichment Stats</title>
+      <table depends="$__hidden__$">
+        <search id="stats_enrichment_metrics_base" base="filterbase">
+          <query>$show_stats$
+| foreach Splunk_Query, coverage-point_of_contact, query-*
+    [| eval &lt;&lt;FIELD&gt;&gt; = case(len(trim('&lt;&lt;FIELD&gt;&gt;'))&gt;0 AND NOT upper('&lt;&lt;FIELD&gt;&gt;') IN("MISSING", "UNKNOWN", "?", "N/A", "NONE", "NOT AVAILABLE"), '&lt;&lt;FIELD&gt;&gt;')
+        ]
+| fields Event_Logging_Level, Log_Category, Required_Data_Category, Required_Data, Required_Sub_Data, Data_Collection_Status, Data_Availability_Status, Splunk_Query, coverage-point_of_contact, query-*
+| stats 
+    c AS Subtotal
+    min(order) AS order
+    count(eval(isNotNull('coverage-point_of_contact'))) AS "Documented Points-of-Contact"
+    count(eval(isNull('coverage-point_of_contact'))) AS  "Missing Points-of-Contact"
+    count(eval(isNotNull(Splunk_Query))) AS "Documented Queries"
+    count(eval(isNull(Splunk_Query))) AS  "Missing Queries"
+    count(eval(isNotNull('query-example_output'))) AS "Documented Query Example Output"
+    count(eval(isNull('query-example_output'))) AS "Missing Query Example Output"
+    count(eval(isNotNull('query-is_example'))) AS "Documented Queries Are Examples"
+    count(eval(isNotNull('query-notes'))) AS "Documented Query Notes"
+    count(eval(isNotNull('query-needs_review'))) AS "Documented Queries Need Review"
+    count(eval(isNotNull('query-too_general'))) AS "Documented Queries Are Too General"
+    by $stats_groupby$</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+      <table id="pt_stats_enrichment_metrics_perc" depends="$show_stats_perc$">
+        <search base="stats_enrichment_metrics_base">
+          <query>$show_stats_perc$
+| foreach *
+    [| eval 
+        "&lt;&lt;FIELD&gt;&gt;" = if("&lt;&lt;FIELD&gt;&gt;" IN($stats_groupby|s$, "Subtotal", "marker"), '&lt;&lt;FIELD&gt;&gt;', floor(('&lt;&lt;FIELD&gt;&gt;'/Subtotal)*100) )
+        ]
+| appendpipe
+    [| stats
+        median("Documented Points-of-Contact") AS "Documented Points-of-Contact"
+        median("Missing Points-of-Contact") AS "Missing Points-of-Contact"
+        median("Documented Queries") AS "Documented Queries"
+        median("Missing Queries") AS "Missing Queries"
+        median("Documented Query Example Output") AS "Documented Query Example Output"
+        median("Missing Query Example Output") AS "Missing Query Example Output"
+        median("Documented Queries Are Examples") AS "Documented Queries Are Examples"
+        median("Documented Query Notes") AS "Documented Query Notes"
+        median("Documented Queries Need Review") AS "Documented Queries Need Review"
+        median("Documented Queries Are Too General") AS "Documented Queries Are Too General"
+        | foreach *
+            [| eval "&lt;&lt;FIELD&gt;&gt;" = floor('&lt;&lt;FIELD&gt;&gt;')
+                ]
+        | eval
+            $stats_groupby$ = "Median",
+            marker = -3
+            ]
+| appendpipe
+    [| stats
+        avg("Documented Points-of-Contact") AS "Documented Points-of-Contact"
+        avg("Missing Points-of-Contact") AS "Missing Points-of-Contact"
+        avg("Documented Queries") AS "Documented Queries"
+        avg("Missing Queries") AS "Missing Queries"
+        avg("Documented Query Example Output") AS "Documented Query Example Output"
+        avg("Missing Query Example Output") AS "Missing Query Example Output"
+        avg("Documented Queries Are Examples") AS "Documented Queries Are Examples"
+        avg("Documented Query Notes") AS "Documented Query Notes"
+        avg("Documented Queries Need Review") AS "Documented Queries Need Review"
+        avg("Documented Queries Are Too General") AS "Documented Queries Are Too General"
+        | foreach *
+            [| eval "&lt;&lt;FIELD&gt;&gt;" = floor('&lt;&lt;FIELD&gt;&gt;')
+                ]
+        | eval
+            $stats_groupby$ = "Average",
+            marker = -2
+            ]
+| appendpipe
+    [| stats
+        stdev("Documented Points-of-Contact") AS "Documented Points-of-Contact"
+        stdev("Missing Points-of-Contact") AS "Missing Points-of-Contact"
+        stdev("Documented Queries") AS "Documented Queries"
+        stdev("Missing Queries") AS "Missing Queries"
+        stdev("Documented Query Example Output") AS "Documented Query Example Output"
+        stdev("Missing Query Example Output") AS "Missing Query Example Output"
+        stdev("Documented Queries Are Examples") AS "Documented Queries Are Examples"
+        stdev("Documented Query Notes") AS "Documented Query Notes"
+        stdev("Documented Queries Need Review") AS "Documented Queries Need Review"
+        stdev("Documented Queries Are Too General") AS "Documented Queries Are Too General"
+        | foreach *
+            [| eval "&lt;&lt;FIELD&gt;&gt;" = floor('&lt;&lt;FIELD&gt;&gt;')
+                ]
+        | eval
+            $stats_groupby$ = "Standard Deviation",
+            marker = -1
+            ]
+| sort marker
+| fields - marker, Subtotal
+| fields - Missing*, "Documented Queries Are Examples"
+| rename 
+    "Documented Query Example Output" AS "Queries: With Output"
+    
+    "Documented Queries Need Review" AS "Queries: Need Review"
+    "Documented Query Notes" AS "Queries: With Notes"
+    "Documented Queries Are Too General" AS "Queries: Too General"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="color" field="Event_Logging_Level">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data_Category">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Log_Category">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data">
+          <colorPalette type="map">{"Median":#005288,"Average":#003E67,"Standard Deviation":#002B47}</colorPalette>
+        </format>
+        <format type="number" field="Documented Points-of-Contact">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Missing Points-of-Contact">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Queries">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Missing Queries">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Query Example Output">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Queries: With Example Output">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Missing Query Example Output">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Queries Are Examples">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Queries Need Review">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Queries: Need Review">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Queries Are Too General">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Queries: Too General">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Documented Query Notes">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="number" field="Queries: With Notes">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+        <format type="color" field="Documented Points-of-Contact">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Missing Points-of-Contact">
+          <colorPalette type="list">[#53A051,#B6C75A,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Documented Queries">
+          <colorPalette type="list">[#720E1F,#F1813F,#F8BE34,#3E753C,#016074]</colorPalette>
+          <scale type="threshold">50,60,80,99</scale>
+        </format>
+        <format type="color" field="Missing Queries">
+          <colorPalette type="list">[#53A051,#B6C75A,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Documented Queries Are Examples">
+          <colorPalette type="list">[#53A051,#B6C75A,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Documented Queries Need Review">
+          <colorPalette type="list">[#53A051,#B6C75A,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Queries: Need Review">
+          <colorPalette type="list">[#016074,#3E753C,#F8BE34,#F1813F,#720E1F]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Documented Queries Are Too General">
+          <colorPalette type="list">[#53A051,#B6C75A,#F8BE34,#F1813F,#DC4E41]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="color" field="Queries: Too General">
+          <colorPalette type="list">[#016074,#3E753C,#F8BE34,#F1813F,#720E1F]</colorPalette>
+          <scale type="threshold">1,20,40,50</scale>
+        </format>
+        <format type="number" field="Queries: With Output">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+      </table>
+      <table id="pt_stats_enrichment_metrics_count" depends="$show_stats_count$">
+        <search base="stats_enrichment_metrics_base">
+          <query>$show_stats_count$
+| addcoltotals labelfield=$stats_groupby$ label="Total"
+| eval marker = if($stats_groupby$ == "Total", -1, marker)
+| sort marker
+| fields - marker
+| fields - "Missing Query Example Output", "Documented Queries Are Examples"
+| rename 
+    "Documented Points-of-Contact" AS "Points-of-Contact: Documented"
+    "Missing Points-of-Contact" AS "Points-of-Contact: Missing"
+    "Documented Queries" AS "Queries: Documented"
+    "Missing Queries" AS "Queries: Missing"
+    "Documented Query Example Output" AS "Queries: With Output"
+    
+    "Documented Queries Need Review" AS "Queries: Need Review"
+    "Documented Query Notes" AS "Queries: With Notes"
+    "Documented Queries Are Too General" AS "Queries: Too General"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">$link_visible$</option>
+        <format type="color" field="Event_Logging_Level">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data_Category">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Log_Category">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Required_Data">
+          <colorPalette type="map">{"Total":#005288}</colorPalette>
+        </format>
+        <format type="color" field="Points-of-Contact: Documented">
+          <colorPalette type="map">{"0":#720E1F}</colorPalette>
+        </format>
+        <format type="color" field="Queries: Documented">
+          <colorPalette type="map">{"0":#720E1F}</colorPalette>
+        </format>
+        <format type="color" field="Points-of-Contact: Missing">
+          <colorPalette type="minMidMax" maxColor="#720E1F" midColor="#F1813F" minColor="#016074"></colorPalette>
+          <scale type="minMidMax" midValue="1" minValue="0"></scale>
+        </format>
+        <format type="color" field="Queries: Missing">
+          <colorPalette type="minMidMax" maxColor="#720E1F" midColor="#F1813F" minColor="#016074"></colorPalette>
+          <scale type="minMidMax" midValue="1" minValue="0"></scale>
+        </format>
+        <format type="color" field="Queries: Need Review">
+          <colorPalette type="minMidMax" maxColor="#720E1F" midColor="#F1813F" minColor="#016074"></colorPalette>
+          <scale type="minMidMax" midValue="1" minValue="0"></scale>
+        </format>
+        <format type="color" field="Queries: Too General">
+          <colorPalette type="minMidMax" maxColor="#F1813F" midColor="#F8BE34" minColor="#016074"></colorPalette>
+          <scale type="minMidMax" midValue="1" minValue="0"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_validation$">
+      <html>
+        <span id="validation_download_label">
+            <i>Click <a href="$validation_download_url$">here</a> to <b>export</b> the results shown below.</i>
+        </span>
+      </html>
+      <table id="pt_validation_results">
+        <title>$validation_check_count$</title>
+        <search>
+          <progress>
+            <eval token="validation_check_count"></eval>
+            <set token="validation_download_label">#validation_download_label{display:none !important;}</set>
+          </progress>
+          <done>
+            <eval token="validation_check_count">if($job.resultCount$ &gt; 0, tostring($job.resultCount$, "commas")." checks found", "")</eval>
+            <eval token="validation_download_filename">"omb-m2131-breakdown-validation-".strftime(now(), "%Y%m%dT%H%M%z")</eval>
+            <set token="validation_download_url">/api/search/jobs/$job.sid$/results?isDownload=true&amp;timeFormat=%FT%T.%Q%:z&amp;maxLines=0&amp;count=0&amp;filename=$validation_download_filename$&amp;outputMode=csv</set>
+            <set token="validation_download_label">#validation_download_label{display:inline !important;}</set>
+          </done>
+          <query>
+            
+            | makeresults | eval _makeresults = 1
+            $dataset_snippet$
+            | where isNull(_makeresults)
+            | `omb-m2131-normalize_status_lookup`
+            | `omb-m2131-link_to_status`
+            | fillnull value="Missing" 
+            | search NOT check-is_relevant IN("n", "no")
+
+            ```Make lookup results compatible with dashboard```
+            | eval
+                Event_Logging_Level = event_logging_level,
+                Log_Category = log_category,
+                Required_Data_Category = required_data_category,
+                Required_Data = 'required_data-check',
+                Required_Sub_Data = 'required_sub_data-check',
+                Splunk_Query = query,
+                Data_Collection_Status = 'coverage-data_collection_status',
+                In_Splunk = 'coverage-data_in_siem',
+                Notes = 'coverage-notes',
+                POC = 'coverage-point_of_contact',
+                required_data-pdf = required_data,
+                required_sub_data-pdf = required_sub_data 
+                
+            | replace Yes with "Have Data", Partial with "Partial Data", No with "No Data" in Data_Collection_Status 
+            | replace Yes with "Data in Splunk", No with "Data Not in Splunk" in In_Splunk 
+            | replace * with "Level *" in Event_Logging_Level
+            
+            ```/Make lookup results compatible with dashboard```
+            
+            
+          | search $t_lc$ $t_ell$ $t_insplunk$ $t_havedata$
+          
+            $show_validation$ 
+| eval 
+    Required_Sub_Data = nullif(Required_Sub_Data, "Missing"),
+    Required_Data_Category = nullif(Required_Data_Category, "Missing")
+| rename check_id AS Check_ID, hierarchy AS Hierarchy
+| tojson output_field=_raw $general_search-all$ | fields - _raw 
+
+| sort order
+| fields Event_Logging_Level Log_Category Required_Data_Category Required_Data Required_Sub_Data check Check_ID Data_Collection_Status In_Splunk $pim_validation_fields$ 
+
+| rename 
+    check AS Check
+    Check_ID AS "Check ID"
+    Check_Type AS "Check Type"
+    Data_Collection_Status AS "Data Collection Status"
+    In_Splunk AS "Data Availability Status"
+    Event_Logging_Level AS "Event Logging Level"
+    Log_Category AS "Log Category"
+    Required_Data_Category AS "Required Data Category"
+    Required_Data AS "Required Data"
+    Required_Sub_Data AS "Required Sub Data"
+    Splunk_Query AS "Splunk Query"
+
+</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="link.visible">$link_visible$</option>
+        <option name="wrap">false</option>
+        <format type="color" field="Required Data">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Required Sub Data">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="Check Type">
+          <colorPalette type="map">{"Data":#602CA1,"Field":#CBA700}</colorPalette>
+        </format>
+        <format type="color" field="Data Collection Status">
+          <colorPalette type="map">{"Have Data":#3E753C,"Partial Data":#DFB01C,"No Data":#720E1F,"Not Applicable":#016074}</colorPalette>
+        </format>
+        <format type="color" field="Data Availability Status">
+          <colorPalette type="map">{"Data in Splunk":#3E753C,"Data Not in Splunk":#720E1F,"Not Applicable":#016074}</colorPalette>
+        </format>
+        <drilldown>
+          <link target="_blank">search?q=$row.Splunk_Query$&amp;earliest=-60m@m&amp;latest=now</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

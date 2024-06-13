@@ -1,0 +1,370 @@
+<form version="1.1" theme="dark" hideEdit="true" hideExport="true">
+  <label>OMB M-21-31 - General Usage</label>
+  <description>Describes how to use this app for tracking OMB M-21-31 compliance progress.</description>
+  <row depends="$__CSS__$">
+    <panel>
+      <html>
+        <body>
+          <style>
+            .section_list>li ul,
+            .section_list>li ol
+            {
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
+            
+            span.p2_ai_status_lookup_q
+            {
+                font-size: 1.1em;
+                font-style: italic;
+                color: #999
+            }
+            
+            .title_prefix {
+              font-size: 140%
+              }
+            .title_label {
+              font-size: 120%;
+              font-weight: bold;
+              }
+              
+            .bullet_title {
+              font-size: 1.5em; 
+              padding-right: 10px;
+              border-bottom: 1px #555 solid;
+              font-weight: bold;
+              }
+            .bullet_title_header {
+              margin-left: 5px;
+            }
+            .bullet_title_label
+            {
+                margin-right: 10px;
+            }
+            
+            .mono {
+              font-family: monospace; 
+              font-size: 90%;
+              }
+              
+            code
+            {
+              background-color: #171d21; 
+              border: 0px;
+              color: #d46129;
+              font-size: 90%;
+              font-family: monospace; 
+              width: fit-content;
+              padding: 2px;
+              }
+              
+            #info&gt;li {margin-bottom: 10px}
+            
+            details {
+              margin-top: 10px;
+              margin-bottom: 20px;
+              margin-left: 30px;
+            }
+            .usage_bullet_header {
+              font-weight: bold;
+              font-size: 110%;
+              color: #f8be34;
+            }
+            
+            .section_title {
+              margin-top: 10px;
+              margin-bottom: 10px;
+              width: fit-content;
+              display: inline-block;
+            }
+            .section_title_label {
+              font-size: 2em;
+              margin-left: 20px;
+              margin-right: 20px;
+            }
+            .section_title_border {
+              width: auto;
+              border-color: #555;
+            }
+            .section_body {
+              margin-bottom: 30px;
+            }
+            
+            /*
+            .dashboard-row {
+                max-width: 90%;
+                min-width: 90%;
+                margin-bottom: 10px;
+                
+            }
+            
+            .dashboard-layout-row-column,
+            .dashboard-layout-rowcolumn-rowcolumnlayout
+            {
+                display: flex;
+                flex-flow: column nowrap;
+                align-items: center;
+            }
+            */
+
+          </style>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+        <body>
+          <section class="docs" id="guidance_dependencies">
+            <span class="section_title">
+              <hr class="section_title_border"/>
+              <p class="section_title_label">App Dependencies</p>
+              <hr class="section_title_border"/>
+            </span>
+            <span class="section_body">
+              <p>These aren't necessarily <i>needed</i> for tracking compliance with this app. One or two dashboards or panels may not work without the "Network Diagram Viz", but neither of these apps are technically needed for the basic functionality of this app to be available. They either make a task a little easier or grant the ability to use advanced functionality within this app (e.g., the <a href="omb_m2131__gap_analysis">Gap Analysis</a> dashboard)</p>
+              <ol>
+                <li><a href="https://splunkbase.splunk.com/app/1724">Splunk App for Lookup File Editing</a> (aka "Lookup Editor") - For easily updating lookups within the Splunk UI</li>
+                <li><a href="https://splunkbase.splunk.com/app/4438">Network Diagram Viz</a> - For visualizations</li>
+              </ol>
+            </span>
+          </section>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+        <body>
+          <section class="docs" id="guidance_tracking">
+            <span class="section_title">
+              <hr class="section_title_border"/>
+              <p class="section_title_label">Using this App for Tracking M-21-31 Compliance</p>
+              <hr class="section_title_border"/>
+            </span>
+            <span class="section_body">
+            
+              <details>
+                <summary>
+                  <span class="bullet_title" id="phase1_relevancy_assessment">
+                      <span class="bullet_title_header">Phase 1: </span>
+                      <span class="bullet_title_label">Relevancy Assessment</span>
+                    </span>
+                </summary>
+                <ul class="section_list">
+                  <li>
+                      <span class="usage_bullet_header">Audience:</span> 
+                      <ul>
+                        <li>Leadership or Management &amp; Splunk Admin</li>
+                      </ul>
+                  </li>
+                  <li>
+                      <span class="usage_bullet_header">Effort:</span> Low</li>
+                  <li>
+                      <span class="usage_bullet_header">Estimated Time:</span> 1 hour</li>
+                  <li>
+                      <span class="usage_bullet_header">Action Items:</span>
+                      <ul>
+                          <li>Visit the <a href="omb_m2131__getting_started">Getting Started</a> dashboard. Answer the questions and following the instructions to create the lookup that will be used for tracking compliance progress. If tracking for multiple groups, then please see the <a href="#mtm">Multi-Tenant Metrics</a> section below.</li>
+                          <li>Meet with leadership and determine which M-21-31 checks are not relevant to the organization.</li>
+                      </ul>
+                  </li>
+                  <li>
+                      <span class="usage_bullet_header">Notes:</span>
+                      <ol>
+                          <!--I was working on a dashboard for the relevancy assessment that had functionality for auditing, accountability, and ease of completion. However, I had to backlog it due to time constraints and the fact that I'd rather be spending time with my kids.-->
+                          <li>It's recommended to use the <a href="omb_m2131__search_memo">Search Memo</a> dashboard for quickly filtering through the memo.</li>
+                          <li>During the assessment, don't try and update the status lookup via the "Splunk App for Lookup File Editing" (aka "Lookup Editor") app. I highly recommend using something different (e.g., VS Code, Notepad++, Onenote, Excel, etc.) for quickly taking notes on which ones are irrelevant. As of this writing (2024-05), the Lookup Editor still lacks certain functionality that would make it much faster/easier to use. We need speed, and that app allows for everything but that. Update the lookup however you want afterwards. I started working on a dashboard for optimizing this process, but the juice wasn't worth the squeeze.</li>
+                          <li>When updating a check's relevancy in the status lookup, determine the check ids for the ones that are not relevant and then update the <code>check-is_relevant</code> field with the appropriate value (see <a href="omb_m2131__lookup_reference">Lookup Reference</a> for allowed values).</li>
+                          <li>It is <i>highly recommended</i> to have documentation of leadership's approval of which checks were marked as irrelevant and why. Someone <i>will</i> ask about it (e.g., onboarding, auditors, etc.).</li>
+                          <li>Feel free to add more fields to the status lookup, as needed. Afterwards, they will be available for reference in the dashboards via the "Search Query/Keyword Filter" text input.</li>
+                      </ol>
+                  </li>
+                </ul>
+              </details>
+              <details>
+                <summary>
+                  <span class="bullet_title">
+                      <span class="bullet_title_header">Phase 2: </span>
+                      <span class="bullet_title_label">Initial Evaluation</span>
+                    </span>
+                </summary>
+                <ul>
+                  <li>
+                      <span class="usage_bullet_header">Audience:</span> 
+                      <ul>
+                          <li>Required: Data SMEs &amp; Splunk Admin</li>
+                          <li>Optional: Management</li>
+                      </ul>
+                  </li>
+                  <li>
+                      <span class="usage_bullet_header">Effort:</span> Low</li>
+                  <li>
+                      <span class="usage_bullet_header">Estimated Time:</span> 1-3 hours</li>
+                  <li>
+                      <span class="usage_bullet_header">Action Items:</span>
+                    <ul>
+                      <li>Meet with the admins and/or users that know the most about what data exists in the environment.</li>
+                      <li>Read through the checks in the lookup <code>omb-m2131</code>.</li>
+                      <li>In the lookup <code>omb-m2131-status</code>, update the fields <code>coverage-data_collection_status</code> and <code>coverage-data_in_siem</code> with one of the allowed values. More info on the allowed values can be seen in the "Lookups" section of this dashboard.
+                        <ol id="p2_ai_status_lookup_fields">
+                          <li><code>coverage-data_collection_status</code>: <span class="p2_ai_status_lookup_q">Are you collecting ALL data for this check?</span>
+                            <ul>
+                              <li>IF and ONLY IF you're collecting 100% of the data for the check, then set it to "Y" or "Yes".</li>
+                              <li>If you're not 100% confident that you're collecting all of the data for this check, but you know you're collecting at least something for it, then set it to "P" or "Partial".</li>
+                              <li>If the check is relevant and you're not collecting anything for the check, then set it to "N" or "No".</li>
+                              <li>If you're not sure and need to come back to it, then just set it to "?" or "Unknown" so everyone knows it's at least been visited and then come back to it later.</li>
+                            </ul>
+                          </li>
+                          <li><code>coverage-data_in_siem</code>: <span class="p2_ai_status_lookup_q">Is the data available in the SIEM?</span>
+                            <ul>
+                              <li>"P" and "Partial" are <i>not</i> valid values here. Either it's available, it's not available, or you don't know. There's no middle ground here.</li>
+                              <li>This should only be set to "Y" or "Yes" if <code>coverage-data_collection_status</code> is set to "Y", "Yes", "P", or "Partial"; otherwise, it wouldn't make sense.</li>
+                              <li>If it's not being collected in the SIEM, but IS being collected somewhere else and can be pulled into the SIEM, then you can optionally set <code>coverage-data_exists_elsewhere</code> to "Y" or "Yes". It won't really affect the score, but it's good documentation practices. I'd also recommend adding something in the <code>coverage-notes</code> field to indicate where it is located, because people will definitely ask about it.</li>
+                            </ul>
+                          </li>
+                        </ol>
+                      
+                      </li>
+                      <li>If tracking compliance for multiple groups, then the lookup that will need to be updated should be called <code>omb-m2131-status-&lt;GROUP_NAME&gt;</code>, unless it was changed or a different suffix was provided when the lookup was created.</li>
+                    </ul>
+                  </li>
+                  <li>
+                      <span class="usage_bullet_header">Notes:</span>
+                    <ol>
+                      <li>For now, it's recommended to perform this phase via the "Splunk App for Lookup File Editing" (aka "Lookup Editor") app.</li>
+                      <li>If an average of 30 seconds or more is spent on each check, then the assessors should re-evaluate their current approach.</li>
+                      <li>Try to avoid wasting the SME's time. Here are some ways to help prevent that from happening.
+                        <ol>
+                          <li>Ignore adding Splunk queries during this phase. This is meant to be a semi-fast phase. Documenting queries should be reserved for Phase 3.</li>
+                          <li>Only focus on updating the fields mentioned above in the "Action Items" section, <i>unless</i> Phase 3 <b>will</b> be performed and the items being added are important for the those performing it. For example,
+                            <ul>
+                              <li>If the correct POC for a data source is different than who was originally expected, then document the correct POC in the appropriate field.</li>
+                              <li>If the referenced data is a different SIEM, then mark <code>coverage-data_exists_elsewhere</code> with the appropriate value and document the SIEM in the <code>coverage-notes</code> field.</li>
+                              <li>If the check can be interpreted multiple ways, then document the way it's being interpreted in the <code>check-notes</code> field. This <strong>WILL</strong> come up later during Phase 3, review, or auditing. If the chosen interpretation wasn't documented, then no one will remember it and everyone will look foolish.</li>
+                            </ul>
+                          </li>
+                        </ol>
+                      </li>
+                    </ol>
+                  </li>
+                </ul>
+              </details>
+              <details>
+                <summary>
+                  <span class="bullet_title">
+                      <span class="bullet_title_header">Phase 3: </span>
+                      <span class="bullet_title_label">Deep Dive</span>
+                    </span>
+                </summary>
+                <ul>
+                  <li>
+                      <span class="usage_bullet_header">Audience:</span> 
+                      <ul>
+                          <li>Required: Data SMEs &amp; Splunk Admin</li>
+                      </ul>
+                  </li>
+                  <li>
+                      <span class="usage_bullet_header">Effort:</span> Incredibly High</li>
+                  <li>
+                      <span class="usage_bullet_header">Estimated Time:</span> Unknown</li>
+                  <li>
+                      <span class="usage_bullet_header">Action Items:</span>
+                    <ul>
+                        <li>Fill in the remaining fields in the m2131 status lookup, as appropriate. At a minimum, document a query in the <code>query</code> field for each check.</li>
+                      </ul>
+                  </li>
+                </ul>
+              </details>
+            </span>
+          </section>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row id="mtm">
+    <panel>
+      <html>
+      <body>
+        <section class="docs" id="guidance_multitenancy">
+          <span class="section_title">
+            <hr class="section_title_border"/>
+            <p class="section_title_label">Multi-Tenant Metrics</p>
+            <hr class="section_title_border"/>
+          </span>
+          <span class="section_body">
+            <ul class="section_list">
+              <li>
+                  <span class="usage_bullet_header mtm_list">Use Case:</span>
+                <ul>
+                  <li>Mulitple groups/departments in an organization need to be tracked separately, with the analysis results being visible in both a consolidated and individual format.</li>
+                </ul>
+              </li>
+              <li>
+                  <span class="usage_bullet_header mtm_list">Action Items:</span>
+                <ol>
+                  <li>Visit the <a href="omb_m2131__getting_started">Getting Started</a> dashboard and following the instructions.
+                    <ul>
+                      <li>When complete, it will have created a lookup file that will be used for tracking compliance progress for the specified group. It will also create a lookup definitiona for the lookup file.</li>
+                      <li>It will ask you to specify a display name for the group. This will be automatically used in the label at the top of various dashboards in this app, as well as the name of the lookup file.</li>
+                    </ul>
+                  </li>
+                  <li>Each time a lookup file is created with that dashboard, a lookup definition will also be automatically created that points the lookup file. The lookup definition will have the same name as the lookup file, excluding ".csv".</li>
+                  <li>Additionally, when a new status lookup is created for a group using the  , a macro (called <code>`omb-m2131-status-all`</code>) will also be created/updated to include the new lookup definition. This macro prevents a user from having to select the same multiple items ad nauseam, instead allowing them the ability to click a single item that references all groups.</li>
+                  <li><div class="usage_bullet_header mtm_list" style="font-size: 1em;">Macro Naming Requirements:</div> A macro can also be manually created that contains a subset of the groups. If the macro is meant to be used in the dashboards in this app, then please follow the guidance below.
+                    <ul>
+                      <li>The macro's name MUST start with either "omb-m2131-status-" or "m2131-status-", but can end with anything. </li>
+                      <li>The macro's definition MUST have the lookup definitions or lookup files on a single line.</li>
+                      <li>Each lookup reference MUST be delimited by a comma.</li>
+                      <li>One or more spaces MAY be included after commas, if desired</li>
+                      <li>The macro definition MUST only include the following characters: letters, numbers, underscores, periods, dashes, commas, &amp; spaces.<div/></li>
+                      <li>This has a couple of different use cases: 
+                        <ol>
+                          <li>Consistency needs to be ensured for reporting since it prevents users from forgetting to include one or more groups.</li>
+                          <li>There are so many groups that it's annoying selecting them all in the dashboard.</li>
+                        </ol>
+                      </li>
+                      <li><div class="usage_bullet_header mtm_list" style="font-size: 1em;">Example:</div> Here's an example of how the macros might be structured in order to track a subset of groups in a larger group that doesn't include data from one or more other groups.
+                        <ul>
+                          <li>I have groups A, B, C, D, E, &amp; F. I need to track A, B, &amp; C together as one larger group called "alpha", D &amp; E as another larger group called "bravo", &amp; F separately by itself. I may want to create the following macros for easily changing contexts in the dashboards.
+                            <ul>
+                              <li>
+                                  Name: <code>m2131-status-alpha</code>
+                                  <ul>
+                                    <li>Definition: <code>omb-m2131-status-group_a, omb-m2131-status-group_b, omb-m2131-status-group_c</code>
+                                    </li>
+                                  </ul>
+                              </li>
+                              <li>
+                                  Name: <code>m2131-status-bravo</code>
+                                  <ul>
+                                    <li>Definition: <code>omb-m2131-status-group_d, omb-m2131-status-group_e</code>
+                                    </li>
+                                  </ul>
+                              </li>
+                            </ul>
+                          </li>
+                          <li><span class="usage_bullet_header mtm_list" style="font-size: 1em;">Notes:</span>
+                            <ul>
+                              <li>I'm only including "group_" in the name of the example lookups for ease of understanding. It is not a required naming convention. I could have excluded it to no ill effect.</li>
+                              <li>Since I can already select "group F" by itself using its lookup definition, there would be no need to create a macro for it, unless there's a requirement for consistency.</li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ol>
+              </li>
+              
+            </ul>
+          </span>
+          
+        </section>
+      </body>
+    </html>
+    </panel>
+  </row>
+</form>

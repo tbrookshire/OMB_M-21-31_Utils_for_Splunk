@@ -1,0 +1,179 @@
+[default]
+[]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[eventtypes]
+export = system
+
+[lookups]
+export = system
+
+[macros/m2131]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-fields]
+export = system
+
+[macros/m2131-fields-compact]
+export = system
+
+[macros/m2131-fields-compact%281%29]
+export = system
+
+[macros/m2131-get_status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-link_to_status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-link_to_status%281%29]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-normalize_status_lookup]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/m2131-status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-status-fields]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/m2131-status-group-alpha]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/omb-m2131]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/omb-m2131-fields]
+export = system
+
+[macros/omb-m2131-fields-compact]
+export = system
+
+[macros/omb-m2131-fields-compact%281%29]
+export = system
+
+[macros/omb-m2131-get_status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/omb-m2131-link_to_status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/omb-m2131-link_to_status%281%29]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/omb-m2131-normalize_status_lookup]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/omb-m2131-status]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/omb-m2131-status-fields]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[macros/parse_query]
+access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+export = system
+
+[macros/parse_query%281%29]
+access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+export = system
+
+[macros/z__omb-m2131-app_namespace]
+access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+export = none
+
+[macros/z__omb-m2131-macros-schema]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/z__omb-m2131-schema]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/z__omb-m2131-status-schema]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[macros/z__omb-m2131-viz-linkset-lc_to_c]
+access = read : [ * ]
+export = none
+
+[macros/z__omb-m2131-viz-objectset-check]
+access = read : [ * ]
+export = none
+
+[macros/z__omb-m2131-viz-objectset-log_category]
+access = read : [ * ]
+export = none
+
+[props]
+export = system
+
+[transforms]
+export = system
+
+[transforms/m2131]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[transforms/m2131-status-demo]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[transforms/omb-m2131]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[transforms/omb-m2131-status-demo]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__auto_data_inventory]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__breakdown]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__breakdown]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__gap_analysis]
+access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__general_usage]
+access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__knowledge_object_reference]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[views/omb_m2131__search_memo]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = none
+
+[viewstates]
+access = read : [ * ], write : [ * ]
+export = system
+
