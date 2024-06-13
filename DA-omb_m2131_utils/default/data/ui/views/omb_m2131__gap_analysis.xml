@@ -1016,7 +1016,7 @@ Link log_category to check
                 values(all-value-host) AS all-value-host
                 values(all-value-source) AS all-value-source
                 values(all-field-requested-custom) AS all-field-requested-custom
-                by check_id-level_2
+                by check_id-parsed
             | fillnull value=NULL all-value-datamodel, all-value-index, all-value-sourcetype, all-value-host, all-value-source
             | stats 
               values(all-field-requested-custom) AS fields
