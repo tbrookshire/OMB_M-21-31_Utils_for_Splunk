@@ -28,7 +28,7 @@ These aren't necessarily needed for tracking compliance with this app. One or tw
 
 
 # Upgrade Instructions:
-## From app version 1.5.1 to 1.7.13
+## From app version 1.5.1 to 1.7.x
 If upgrading the app from version 1.5.1 OR if your the status lookup is using the m2131 lookup version 1.2.3, then make sure you use the appropriate `omb-m2131-upgrade_status_lookup-from_123-to_140` macro. If upgrading a status lookup that includes a group name in the lookup definition name, then use the `omb-m2131-upgrade_status_lookup-from_123-to_140(1)` macro and specify the name of the lookup as the argument. See the `Macros` section in the dashboard `Knowledge Object Reference` for more information.
 
 # Additional Notes:
