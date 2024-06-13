@@ -14,10 +14,17 @@ What this app DOES do:
 3. More efficient reporting and analysis,
 5. Provide really awesome features after a deep dive is performed (e.g., the dashboard `Auto. Data Inventory`).
 
-# Installation Instructions
+# Installation Instructions:
 Either play around with the dashboards using the `omb-m2131-status-demo` lookup or create your own status lookup for tracking by using the `Getting Started` dashboard.
 
-# Upgrade Instructions
+## Dependencies:
+These aren't necessarily needed for tracking compliance with this app. One or two dashboards or panels may not work without the "Network Diagram Viz", but neither of these apps are _technically_ needed for the basic functionality of this app to be available. They either make a task a little easier or grant the ability to use advanced functionality within this app (e.g., the `Gap Analysis` dashboard)
+
+1. Splunk App for Lookup File Editing (aka "Lookup Editor") ([splunkbase](https://splunkbase.splunk.com/app/1724)) - For easily updating lookups within the Splunk UI
+2. Network Diagram Viz ([splunkbase](https://splunkbase.splunk.com/app/4438))- For visualizations
+
+
+# Upgrade Instructions:
 ## From app version 1.5.1 to 1.7.13
 If upgrading the app from version 1.5.1 OR if your the status lookup is using the m2131 lookup version 1.2.3, then make sure you use the appropriate `omb-m2131-upgrade_status_lookup-from_123-to_140` macro. If upgrading a status lookup that includes a group name in the lookup definition name, then use the `omb-m2131-upgrade_status_lookup-from_123-to_140(1)` macro and specify the name of the lookup as the argument. See the `Macros` section in the dashboard `Knowledge Object Reference` for more information.
 
@@ -25,7 +32,7 @@ If upgrading the app from version 1.5.1 OR if your the status lookup is using th
 The only updates I intend on making to this app are for fixing bugs. I've spent a year of personal time on this app and released it _way_ later than I anticipated all because of my own personal standards. I'm burnt out. I don't plan on adding any new features to this app. If you find a bug or logic issue, then please let me know or submit a pull request.
 
 
-# Dashboards
+# Dashboards:
 
 ## Breakdown
 Helps organizations track OMB M-21-31 compliance progress at a high level and explore associated data.
