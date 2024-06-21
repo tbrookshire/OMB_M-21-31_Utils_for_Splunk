@@ -1,18 +1,34 @@
 # OMB_M-21-31_Utils_for_Splunk
-Splunk dashboards and utilities for tracking compliance at a high-level with OMB M-21-31. 
+
+# Table of Contents:
+* Purpose
+* Compatibility
+* Installation Instructions
+  * Custom capability & role
+  * Dependencies
+* Upgrade Instructions
+* Support
+* Dashboards & Screenshots
+
+# Purpose:
+Splunk dashboards and utilities for tracking OMB M-21-31 compliance at a high-level. 
 
 This is the final product of what was presented during the Splunk .conf23 session "_SEC1817B - How Centers for Disease Control (CDC) Leverages the Power of OMB M-21-31 for More Than Just Compliance_" by Andrew Dayton & Thomas Brookshire ([recording](https://conf.splunk.com/files/2023/recordings/SEC1817B.mp4), [slides](https://conf.splunk.com/files/2023/slides/SEC1817B.pdf)). 
 
-# Purpose:
 What this app does NOT do:
-1. Make your organization compliant.
-2. Automatically analyze your data to estimate current compliance.
+1. Make your organization compliant,
+2. Automatically analyze your data to estimate current compliance,
+3. Display compliance on an asset-level
 
 What this app DOES do:
 1. Help perform a much faster assessment at a very high-level,
 2. Identify gaps,
 3. More efficient reporting and analysis,
 5. Provide really awesome features after a deep dive is performed (e.g., the dashboard `Auto. Data Inventory`).
+
+# Compatibility:
+* Splunk Enterprise, Splunk Cloud, Splunk GovCloud
+* Platform Version: 9.2, 9.1, 9.0
 
 # Installation Instructions:
 Either play around with the dashboards using the `omb-m2131-status-demo` lookup or create your own status lookup for tracking by using the `Getting Started` dashboard. 
@@ -31,8 +47,8 @@ These aren't necessarily needed for tracking compliance with this app. One or tw
 ## From app version 1.5.1 to 1.7.x
 The version of the m2131 pdf lookup is different than the version of the app, as it should be. If upgrading the app from version 1.5.1 OR if your the status lookup is using the m2131 lookup version 1.2.3, then make sure you use the appropriate `omb-m2131-upgrade_status_lookup-from_123-to_140` macro. If upgrading a status lookup that includes a group name in the lookup definition name, then use the `omb-m2131-upgrade_status_lookup-from_123-to_140(1)` macro and specify the name of the lookup as the argument. See the `Macros` section in the dashboard `Knowledge Object Reference` for more information.
 
-# Additional Notes:
-The only updates I intend on making to this app are for fixing bugs. I've spent a year of personal time on this app and released it _way_ later than I anticipated all because of my own personal standards. I'm burnt out. I don't plan on adding any new features to this app. If you find a bug or logic issue, then please let me know or submit a pull request.
+# Support:
+Support is made on a best-effort basis. The only updates I intend on making to this app are for fixing bugs. I am currently the sole developer for this app and I've already spent a year of personal time on this app. I released it _way_ later than I anticipated all because of my own personal standards. I'm burnt out. I don't plan on adding any new features to this app, barring a wild hair. If you find a bug or logic issue, then please let me know or submit a pull request.
 
 
 # Dashboards:
