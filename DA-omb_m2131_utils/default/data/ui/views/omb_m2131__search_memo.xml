@@ -544,6 +544,12 @@
       </input>
       <html>
         <style>
+            div[data-view="views/shared/appbar/AppNav"] div[data-view="views/shared/appbar/Menu"]:nth-child(6) div[data-view="views/shared/appbar/SlideNav"],
+            div[data-view="views/shared/appbar/AppNav"] div[data-view="views/shared/appbar/Menu"]:nth-child(6) ul[data-view="views/shared/appbar/SlideList"]
+            {
+                width: 500px;
+            }
+
             div[data-view="views/dashboard/form/GlobalFieldset"] .input-checkbox label:first-child
             {
                 display: none;

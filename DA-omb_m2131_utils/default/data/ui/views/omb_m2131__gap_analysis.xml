@@ -1,5 +1,6 @@
 <form version="1.1" theme="dark" hideEdit="true" hideExport="true">
   <label>OMB M-21-31 - Gap Analysis</label>
+  <description>Helps visualize the current state of compliance and areas that need improvement.</description>
   <init>
     <set token="viz_kg_legend_1">1</set>
     <unset token="viz_kg_legend_2"></unset>
@@ -167,6 +168,12 @@
     <panel>
       <html>
       <style>
+          div[data-view="views/shared/appbar/AppNav"] div[data-view="views/shared/appbar/Menu"]:nth-child(6) div[data-view="views/shared/appbar/SlideNav"],
+          div[data-view="views/shared/appbar/AppNav"] div[data-view="views/shared/appbar/Menu"]:nth-child(6) ul[data-view="views/shared/appbar/SlideList"]
+          {
+              width: 500px;
+          }
+
           #it_general_search {
               width: 750px !important;
            }
