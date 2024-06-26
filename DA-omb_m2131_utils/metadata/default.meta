@@ -88,15 +88,15 @@ access = read : [ * ], write : [ admin, sc_admin ]
 export = system
 
 [macros/parse_query]
-access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin ]
 export = system
 
 [macros/parse_query%281%29]
-access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin ]
 export = system
 
 [macros/z__omb-m2131-app_namespace]
-access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin ]
 export = none
 
 [macros/z__omb-m2131-macros-schema]
@@ -158,11 +158,11 @@ access = read : [ * ], write : [ admin, sc_admin ]
 export = none
 
 [views/omb_m2131__gap_analysis]
-access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin ]
 export = none
 
 [views/omb_m2131__general_usage]
-access = read : [ admin, sc_admin ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin ]
 export = none
 
 [views/omb_m2131__knowledge_object_reference]
